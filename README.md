@@ -7,4 +7,4 @@ astrolink4 INDI driver supports [AstroLink 4 mini device](https://astrojolo.com/
 - voltage, current, consumed energy monitoring
 
 # Installing INDI server and libraries
-To start you need to download and install INDI environment. See [INDI](http://indilib.org/download.htm) for details. 
+To start you need to download and install INDI environment. See [INDI page](http://indilib.org/download.html) for details. 
