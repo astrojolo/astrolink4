@@ -217,26 +217,26 @@ bool IndiAstrolink4::initProperties()
 	// power lines
     IUFillSwitch(&Power1S[0], "PWR1BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power1S[1], "PWR1BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "POWER1", "Power Line 1", "Power Lines", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", "12V out 1", "12V Outputs", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     IUFillSwitch(&Power2S[0], "PWR2BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power2S[1], "PWR2BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "POWER2", "Power Line 2", "Power Lines", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "DC2", "12V out 2", "12V Outputs", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     IUFillSwitch(&Power3S[0], "PWR3BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "POWER3", "Power Line 3", "Power Lines", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", "12V out 3", "12V Outputs", IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
 	// focuser 1
     IUFillSwitch(&Focus1MotionS[0],"FOCUS1_INWARD","Focus In",ISS_OFF);
     IUFillSwitch(&Focus1MotionS[1],"FOCUS1_OUTWARD","Focus Out",ISS_ON);
-    IUFillSwitchVector(&Focus1MotionSP,Focus1MotionS,2,getDeviceName(),"FOCUS1_MOTION","Direction","Focuser 1",IP_RW,ISR_ATMOST1,60,IPS_OK);
+    IUFillSwitchVector(&Focus1MotionSP,Focus1MotionS,2,getDeviceName(),"FOCUS1_MOTION","Direction","Focuser",IP_RW,ISR_ATMOST1,60,IPS_OK);
 
     IUFillNumber(&Focus1StepN[0],"FOCUS1_STEP","Steps","%0.0f",0,(int)MAX_STEPS/10,(int)MAX_STEPS/100,(int)MAX_STEPS/100);
-    IUFillNumberVector(&Focus1StepNP,Focus1StepN,1,getDeviceName(),"FOCUS1_STEPSIZE","Step Size","Focuser 1",IP_RW,60,IPS_OK);
+    IUFillNumberVector(&Focus1StepNP,Focus1StepN,1,getDeviceName(),"FOCUS1_STEPSIZE","Step Size","Focuser",IP_RW,60,IPS_OK);
 
     IUFillNumber(&Focus1AbsPosN[0],"FOCUS1_ABSOLUTE_POSITION","Steps","%0.0f",0,MAX_STEPS,(int)MAX_STEPS/100,0);
-    IUFillNumberVector(&Focus1AbsPosNP,Focus1AbsPosN,1,getDeviceName(),"FOCUS1_ABS","Absolute Position","Focuser 1",IP_RW,0,IPS_OK);
+    IUFillNumberVector(&Focus1AbsPosNP,Focus1AbsPosN,1,getDeviceName(),"FOCUS1_ABS","Absolute Position","Focuser",IP_RW,0,IPS_OK);
 
 	// sensors
     IUFillNumber(&Sensor1N[0],"SENSOR1_TEMP","Temperature [C]","%0.0f",0,100,0,0);
@@ -255,7 +255,7 @@ bool IndiAstrolink4::initProperties()
     serialConnection->registerHandshake([&]() { return Handshake();});
 	registerConnection(serialConnection);
 
-	serialConnection->setDefaultPort("/dev/ttyACM0");
+	serialConnection->setDefaultPort("/dev/ttyUSB0");
 //	serialConnection->setDefaultBaudRate(B_115200);
 
     return true;
@@ -319,14 +319,14 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			// loop until new position is reached
 			while ( strcmp(serialCom("p:0"), newval) )
 			{
-				IDMessage(getDeviceName(), "Focuser 1 moving to the position...");
+				IDMessage(getDeviceName(), "Focuser moving to the position...");
 				usleep(100 * 1000);
 			}
 
 			// if reached new position update client
 			if (!strcmp(serialCom("p:0"),newval))
 			{
-				IDMessage(getDeviceName(), "Focuser 1 at the position %0.0f", Focus1AbsPosN[0].value);
+				IDMessage(getDeviceName(), "Focuser at the position %0.0f", Focus1AbsPosN[0].value);
 				IDSetNumber(&Focus1AbsPosNP, NULL);
 				return true;
 			} else {
@@ -358,14 +358,14 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			// loop until new position is reached
 			while ( strcmp(serialCom("p:0"), newval) )
 			{
-				IDMessage(getDeviceName(), "Focuser 1 moving to the position...");
+				IDMessage(getDeviceName(), "Focuser moving to the position...");
 				usleep(100 * 1000);
 			}
 
 			// if reached new position update client
 			if (!strcmp(serialCom("p:0"),newval))
 			{
-				IDMessage(getDeviceName(), "Focuser 1 at the position %0.0f", Focus1AbsPosN[0].value);
+				IDMessage(getDeviceName(), "Focuser at the position %0.0f", Focus1AbsPosN[0].value);
 				IDSetNumber(&Focus1AbsPosNP, NULL);
 				return true;
 			} else {
@@ -438,7 +438,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
 					return false;
 			}
 
-			IDMessage(getDeviceName(), "Power Line 1 is %s", Power1S[0].s == ISS_ON ? "ON" : "OFF" );
+			IDMessage(getDeviceName(), "12V Out 1 is %s", Power1S[0].s == ISS_ON ? "ON" : "OFF" );
 			Power1SP.s = IPS_OK;
 			IDSetSwitch(&Power1SP, NULL);
 			return true;
@@ -463,7 +463,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
 					return false;
 			}
 
-			IDMessage(getDeviceName(), "Power Line 2 is %s", Power2S[0].s == ISS_ON ? "ON" : "OFF" );
+			IDMessage(getDeviceName(), "12V Out 2 is %s", Power2S[0].s == ISS_ON ? "ON" : "OFF" );
 			Power2SP.s = IPS_OK;
 			IDSetSwitch(&Power2SP, NULL);
 			return true;
@@ -488,7 +488,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
 					return false;
 			}
 
-			IDMessage(getDeviceName(), "Power Line 3 is %s", Power3S[0].s == ISS_ON ? "ON" : "OFF" );
+			IDMessage(getDeviceName(), "12V Out 3 is %s", Power3S[0].s == ISS_ON ? "ON" : "OFF" );
 			Power3SP.s = IPS_OK;
 			IDSetSwitch(&Power3SP, NULL);
 			return true;
