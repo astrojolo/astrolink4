@@ -28,8 +28,29 @@
 
 class IndiAstrolink4 : public INDI::DefaultDevice
 {
+
+public:
+    IndiAstrolink4();
+	virtual ~IndiAstrolink4();
+	virtual bool initProperties();
+	virtual bool updateProperties();
+	virtual void ISGetProperties(const char *dev);
+	virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
+	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
+	virtual bool ISNewText (const char *dev, const char *name, char *texts[], char *names[], int n);
+	virtual bool ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int n);
+	
 protected:
+	virtual const char *getDefaultName();
+	virtual void TimerHit();
+	virtual bool ISSnoopDevice(XMLEle *root);
+	virtual bool saveConfigItems(FILE *fp);
+	Connection::Serial *serialConnection = NULL;
+	virtual char* serialCom(const char* input);
+	
 private:
+	virtual bool Handshake();
+	int PortFD=-1;
 	int counter;
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
@@ -49,27 +70,9 @@ private:
 	INumberVectorProperty PWM1NP;
 	INumber PWM2N[1];
 	INumberVectorProperty PWM2NP;
-
-public:
-    IndiAstrolink4();
-	virtual ~IndiAstrolink4();
-
-	virtual const char *getDefaultName();
-
-	virtual void TimerHit();
-	virtual bool Handshake();
-	virtual bool initProperties();
-	virtual bool updateProperties();
-	virtual void ISGetProperties(const char *dev);
-	virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
-	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
-	virtual bool ISNewText (const char *dev, const char *name, char *texts[], char *names[], int n);
-	virtual bool ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int n);
-	virtual bool ISSnoopDevice(XMLEle *root);
-	virtual bool saveConfigItems(FILE *fp);
-	int PortFD=-1;
-	Connection::Serial *serialConnection=NULL;
-	virtual char* serialCom(const char* input);
+	static constexpr const char *POWER_TAB {"Power"};
+	static constexpr const char *FOCUS_TAB {"Focuser"};
+	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
 };
 
 #endif
