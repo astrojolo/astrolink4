@@ -87,9 +87,6 @@ IndiAstrolink4::IndiAstrolink4()
 {
 	setVersion(VERSION_MAJOR,VERSION_MINOR);
 }
-IndiAstrolink4::~IndiAstrolink4()
-{
-}
 bool IndiAstrolink4::Handshake()
 {
 
