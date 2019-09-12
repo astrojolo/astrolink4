@@ -22,6 +22,11 @@
 
 #include <connectionplugins/connectionserial.h>
 
+namespace Connection
+{
+    class Serial;
+}
+
 class AstroLink4 : public INDI::DefaultDevice
 {
   public:
@@ -45,6 +50,7 @@ class AstroLink4 : public INDI::DefaultDevice
     bool setupComplete { false };
     Connection::Serial *serialConnection { nullptr };
     char stopChar { 0xA };	// new line
+    std::vector<std::string> split(const std::string &input, const std::string &regex);
     
     INumber FocuserPosReadN[1];
 	INumberVectorProperty FocuserPosReadNP;

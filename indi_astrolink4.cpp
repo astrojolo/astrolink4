@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright(c) 2019 astrojolo AT astrojolo.com
+ Copyright(c) 2019 astrojolo.com
  .
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
@@ -15,6 +15,8 @@
  the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  Boston, MA 02110-1301, USA.
 *******************************************************************************/
+#include "indicom.h"
+#include "connectionplugins/connectionserial.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -24,16 +26,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <memory>
+#include <regex>
+#include <cstring>
+#include <sys/ioctl.h>
+#include <chrono>
+#include <iomanip>
 #include "indi_astrolink4.h"
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 1
 
-#define TIMERDELAY 3000 // 3s delay for sensors readout
-#define MAX_STEPS 10000 // maximum steppers' value
+#define TIMERDELAY          3000 // 3s delay for sensors readout
+#define MAX_STEPS           10000 // maximum steppers' value
+#define ASTROLINK4_LEN      100
+#define ASTROLINK4_TIMEOUT  3
 
 // We declare a pointer to IndiAstrolink4
-std::unique_ptr<IndiAstrolink4> indiAstrolink4(new indiAstrolink4);
+std::unique_ptr<IndiAstrolink4> indiAstrolink4(new IndiAstrolink4());
 
 void ISPoll(void *p);
 void ISInit()
@@ -89,7 +98,6 @@ IndiAstrolink4::IndiAstrolink4()
 }
 bool IndiAstrolink4::Handshake()
 {
-
 	if (isSimulation()) {
 		IDMessage(getDeviceName(), "Simulation: connected");
 		PortFD = 1;
@@ -98,43 +106,57 @@ bool IndiAstrolink4::Handshake()
 		PortFD = serialConnection->getPortFD();
 		
 		// check device
-		if(strcmp(serialCom("#"), "#:AstroLink 4 mini") != 0)
-		{
-			IDMessage(getDeviceName(), "Device not recognized.");
-			return false;
-		}
-
-		SetTimer(TIMERDELAY);
-
-		IDMessage(getDeviceName(), "AstroLink 4 connected successfully.");
-	}
-
+        char res[ASTROLINK4_LEN] = {0};
+        if(sendCommand("#", res))
+        {
+            if(strncmp(res, "#:AstroLink4mini", 15) != 0)
+            {
+                LOG_ERROR("Device not recognized.");
+                return false;
+            }
+            else
+            {
+                SetTimer(TIMERDELAY);
+                return true;
+            }
+        }
+    }
     return true;
 }
+
 void IndiAstrolink4::TimerHit()
 {
 	if(isConnected())
 	{
-		char* info = serialCom("q");
-
 		// raw data from serial:
 		// q:<stepper position>:<distance to go>:<current>:
 		// <sensor 1 type>:<sensor 1 temp>:<sensor 1 humidity>:<dewpoint>:<sensor 2 type>:<sensor 2 temp>:
 		//<pwm1>:<pwm2>:<out1>:<out2>:<out3>:
 		//<Vin>:<Vreg>:<Ah>:<Wh>:<DCmotorMove>:<CompDiff>:<OverProtectFlag>:<OverProtectValue>
 
-		char * pch;
-		char * sensor[32];
+        char res[ASTROLINK4_LEN] = {0};
+        if (sendCommand("q", res))
+        {
+            std::vector<std::string> result = split(res, ":");
 
-		pch = strtok (info,":");
-		int index = 0;
-		while (pch != NULL)
-		{
-			//IDMessage(getDeviceName(), "token %d: %s", index, pch);
-			sensor[index] = pch;
-			pch = strtok (NULL, ":");
-			index++;
-		}
+            Sensor1NP.s=IPS_BUSY;
+            IDSetNumber(&Sensor1NP, NULL);
+            Sensor1N[0].value = std::stod(result[5]);
+            Sensor1N[1].value = std::stod(result[6]);
+            Sensor1N[2].value = std::stod(result[7]);
+            Sensor1NP.s=IPS_OK;
+            IDSetNumber(&Sensor1NP, NULL);
+
+
+            // update values of various controls
+            /*Focus1AbsPosN[0].value = atof(sensor[1]);
+            IDSetNumber(&Focus1AbsPosNP, NULL);
+            PWM1N[0].value = atof(sensor[10]);
+            IDSetNumber(&PWM1NP, NULL);
+            PWM2N[0].value = atof(sensor[11]);
+            IDSetNumber(&PWM2NP, NULL);*/
+
+        }
 
 /*
 		parsed data:
@@ -162,35 +184,12 @@ void IndiAstrolink4::TimerHit()
 		sensor[21] = OverprotectFlag
 		sensor[22] = OverProtectValue
 */
-
-		if (!strcmp(sensor[0], "q"))
-		{
-			//IDMessage(getDeviceName(), "Sensors data received");
-
-			Sensor1NP.s=IPS_BUSY;
-			IDSetNumber(&Sensor1NP, NULL);
-			Sensor1N[0].value = atof(sensor[5]);
-			Sensor1N[1].value = atof(sensor[6]);
-			Sensor1N[2].value = atof(sensor[7]);
-			Sensor1NP.s=IPS_OK;
-			IDSetNumber(&Sensor1NP, NULL);
-
-
-			// update values of various controls
-			Focus1AbsPosN[0].value = atof(sensor[1]);
-			IDSetNumber(&Focus1AbsPosNP, NULL);
-			PWM1N[0].value = atof(sensor[10]);
-			IDSetNumber(&PWM1NP, NULL);
-			PWM2N[0].value = atof(sensor[11]);
-			IDSetNumber(&PWM2NP, NULL);
-		}
-
 		SetTimer(TIMERDELAY);
     }
 }
 const char * IndiAstrolink4::getDefaultName()
 {
-        return (char *)"AStroLink 4";
+        return (char *)"AstroLink 4";
 }
 bool IndiAstrolink4::initProperties()
 {
@@ -225,7 +224,7 @@ bool IndiAstrolink4::initProperties()
     IUFillNumber(&Sensor1N[0], "SENSOR1_TEMP", "Temperature [C]", "%4.2f", 0, 100, 0, 0);
     IUFillNumber(&Sensor1N[1], "SENSOR1_HUM", "Humidity [%]", "%4.2f", 0, 100, 0, 0);
     IUFillNumber(&Sensor1N[2], "SENSOR1_DEW", "Dew Point [C]", "%4.2f", 0, 100, 0, 0);
-    IUFillNumberVector(&Sensor1NP, Sensor1N, 3, getDeviceName(), "SENSOR1", "Sensor 1", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);	
+    IUFillNumberVector(&Sensor1NP, Sensor1N, 3, getDeviceName(), "SENSOR1", "DHT sensor", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);
 
 	// pwm
     IUFillNumber(&PWM1N[0], "PWM1_VAL", "Value", "%03d", 0, 100, 10, 0);
@@ -293,9 +292,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 
 			char stepval[8];
 			char newval[8];
-			sprintf(stepval, "R:0:%d", Focus1AbsPosN[0].value);
+            sprintf(stepval, "R:0:%d", Focus1AbsPosN[0].value);
 			serialCom(stepval);
-			sprintf(newval, "p:%d", Focus1AbsPosN[0].value);
+            sprintf(newval, "p:%d", Focus1AbsPosN[0].value);
 
 			// loop until new position is reached
 			while ( strcmp(serialCom("p:0"), newval) )
@@ -315,44 +314,6 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			}
 		}
 
-		// handle focuser 1 - relative
-		if (!strcmp(name, Focus1StepNP.name))
-		{
-			IUUpdateNumber(&Focus1StepNP,values,names,n);
-			IDSetNumber(&Focus1StepNP, NULL);
-
-			if (Focus1MotionS[0].s == ISS_ON)
-			{
-				if ( Focus1AbsPosN[0].value - Focus1StepN[0].value >= Focus1AbsPosN[0].min )
-					Focus1AbsPosN[0].value -= Focus1StepN[0].value;
-			} else {
-				if ( Focus1AbsPosN[0].value + Focus1StepN[0].value <= Focus1AbsPosN[0].max )
-					Focus1AbsPosN[0].value += Focus1StepN[0].value;
-			}
-
-			char stepval[8];
-			char newval[8];
-			sprintf(stepval, "R:0:%d", Focus1AbsPosN[0].value);
-			serialCom(stepval);
-			sprintf(newval, "p:%d", Focus1AbsPosN[0].value);
-
-			// loop until new position is reached
-			while ( strcmp(serialCom("p:0"), newval) )
-			{
-				IDMessage(getDeviceName(), "Focuser moving to the position...");
-				usleep(100 * 1000);
-			}
-
-			// if reached new position update client
-			if (!strcmp(serialCom("p:0"),newval))
-			{
-				IDMessage(getDeviceName(), "Focuser at the position %d", Focus1AbsPosN[0].value);
-				IDSetNumber(&Focus1AbsPosNP, NULL);
-				return true;
-			} else {
-				return false;
-			}
-		}
 
 		// handle PWM1
 		if (!strcmp(name, PWM1NP.name))
@@ -538,4 +499,55 @@ char* IndiAstrolink4::serialCom(const char* input)
 	// IDLog("AstroLink4 Input: [%s] (length: %d), AstroLink4 Output: [%s] (length: %d)\n", input, (int)strlen(input), output, (int)strlen(output));
 
 	return output;
+}
+
+//////////////////////////////////////////////////////////////////////
+///
+//////////////////////////////////////////////////////////////////////
+bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
+{
+    int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
+
+    char command[ASTROLINK4_LEN];
+    char buffer[ASTROLINK4_LEN];
+    tcflush(PortFD, TCIOFLUSH);
+    sprintf(command, "%s\n", cmd);
+    if ( (tty_rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
+        return false;
+
+    if (!res)
+    {
+        tcflush(PortFD, TCIOFLUSH);
+        return true;
+    }
+
+    if ( (tty_rc = tty_nread_section(PortFD, res, ASTROLINK4_LEN, stopChar, ASTROLINK4_TIMEOUT, &nbytes_read)) != TTY_OK || nbytes_read == 1)
+        return false;
+
+    tcflush(PortFD, TCIOFLUSH);
+    res[nbytes_read - 1] = '\0';
+    LOGF_DEBUG("RES <%s>", res);
+    return (cmd[0] == res[0]);
+
+    if (tty_rc != TTY_OK)
+    {
+        char errorMessage[MAXRBUF];
+        tty_error_msg(tty_rc, errorMessage, MAXRBUF);
+        LOGF_ERROR("Serial error: %s", errorMessage);
+    }
+
+    return false;
+}
+
+//////////////////////////////////////////////////////////////////////
+///
+//////////////////////////////////////////////////////////////////////
+std::vector<std::string> IndiAstrolink4::split(const std::string &input, const std::string &regex)
+{
+    // passing -1 as the submatch index parameter performs splitting
+    std::regex re(regex);
+    std::sregex_token_iterator
+    first{input.begin(), input.end(), re, -1},
+          last;
+    return {first, last};
 }

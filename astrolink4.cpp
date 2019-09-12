@@ -29,6 +29,7 @@
 #include <iomanip>
 
 #define TIMERDELAY 500
+#define MAX_STEPS 10000
 
 std::unique_ptr<AstroLink4> astroLink4(new AstroLink4());
 
@@ -86,12 +87,24 @@ bool AstroLink4::initProperties()
     setDriverInterface(AUX_INTERFACE);
     
     addSimulationControl();
+    addDebugControl();
     
     IUFillNumber(&FocuserPosReadN[0], "FOCUS_ABSOLUTE_POSITION", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
     IUFillNumberVector(&FocuserPosReadNP, FocuserPosReadN, 1, getDeviceName(), "FOCUS_POS", "Focuser Position", FOCUS_TAB, IP_RO, 0, IPS_OK);
     
     IUFillNumber(&FocuserMoveToN[0], "FOCUS_MOVEMENT", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
     IUFillNumberVector(&FocuserMoveToNP, FocuserMoveToN, 1, getDeviceName(), "FOCUS_MOV", "Move To", FOCUS_TAB, IP_WO, 0, IPS_OK);
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// Serial Connection
+    ////////////////////////////////////////////////////////////////////////////
+    serialConnection = new Connection::Serial(this);
+    serialConnection->setDefaultBaudRate(serialConnection->B_115200);
+    serialConnection->registerHandshake([&]()
+    {
+        return Handshake();
+    });
+    registerConnection(serialConnection);
 }
 
 bool AstroLink4::updateProperties()
@@ -100,12 +113,12 @@ bool AstroLink4::updateProperties()
 
     if (isConnected())
     {
-    	defineNumber(&FocusAbsPosNP);
+        defineNumber(&FocuserPosReadNP);
 		defineNumber(&FocuserMoveToNP);
     }
     else
     {
-    	deleteProperty(FocusAbsPosNP.name);
+        deleteProperty(FocuserPosReadNP.name);
 		deleteProperty(FocuserMoveToNP.name);
     }
 }
@@ -190,7 +203,7 @@ bool AstroLink4::Handshake()
 
     if (isSimulation())
     {
-        snprintf(response, ASTROLINK4_LEN, "#:AstroLink4mini"");
+        snprintf(response, ASTROLINK4_LEN, "#:AstroLink4mini");
         nbytes_read = 8;
     }
     else
@@ -231,10 +244,11 @@ bool AstroLink4::Handshake()
 
     response[nbytes_read - 1] = '\0';
     LOGF_DEBUG("RES <%s>", response);
-    
-	if(strcmp(response, "#:AstroLink4mini") != 0)
+
+    if(strncmp(response, "#:AstroLink4mini", 16) != 0)
 	{
-		LOGF_ERROR("Device not recognized.");
+
+        LOG_ERROR("Device not recognized.");
 		return false;
 	}
 
@@ -302,10 +316,22 @@ bool AstroLink4::saveConfigItems(FILE * fp)
 {
 	INDI::DefaultDevice::saveConfigItems(fp);
 	
-	IUSaveConfigNumber(fp, &FocuserMoveToN);
+    IUSaveConfigNumber(fp, &FocuserMoveToNP);
 	return true;
 }
 		
+//////////////////////////////////////////////////////////////////////
+///
+//////////////////////////////////////////////////////////////////////
+std::vector<std::string> AstroLink4::split(const std::string &input, const std::string &regex)
+{
+    // passing -1 as the submatch index parameter performs splitting
+    std::regex re(regex);
+    std::sregex_token_iterator
+    first{input.begin(), input.end(), re, -1},
+          last;
+    return {first, last};
+}
 		
 /*
 		parsed data:

@@ -39,19 +39,22 @@ public:
 	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
 	virtual bool ISNewText (const char *dev, const char *name, char *texts[], char *names[], int n);
 	virtual bool ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int n);
+    virtual bool ISSnoopDevice(XMLEle *root);
 	
 protected:
 	virtual const char *getDefaultName();
 	virtual void TimerHit();
-	virtual bool ISSnoopDevice(XMLEle *root);
 	virtual bool saveConfigItems(FILE *fp);
 	Connection::Serial *serialConnection = NULL;
 	virtual char* serialCom(const char* input);
+    virtual bool sendCommand(const char * cmd, char * res);
 	
 private:
 	virtual bool Handshake();
 	int PortFD=-1;
 	int counter;
+    std::vector<std::string> split(const std::string &input, const std::string &regex);
+    char stopChar { 0xA };	// new line
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
 	ISwitch Power2S[2];
