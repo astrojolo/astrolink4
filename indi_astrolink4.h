@@ -60,8 +60,6 @@ private:
 	ISwitchVectorProperty Power3SP;
 	ISwitch Focus1MotionS[2];
 	ISwitchVectorProperty Focus1MotionSP;
-	INumber Focus1StepN[1];
-	INumberVectorProperty Focus1StepNP;
 	INumber Focus1AbsPosN[1];
 	INumberVectorProperty Focus1AbsPosNP;
 	INumber Sensor1N[3];

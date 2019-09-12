@@ -221,23 +221,20 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&Focus1MotionS[1],"FOCUS1_OUTWARD","Focus Out",ISS_ON);
     IUFillSwitchVector(&Focus1MotionSP, Focus1MotionS, 2, getDeviceName(), "FOCUS1_MOTION", "Direction", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_OK);
 
-    IUFillNumber(&Focus1StepN[0], "FOCUS1_STEP", "Steps", "%0.0f", 0, (int)MAX_STEPS/10, (int)MAX_STEPS/100, (int)MAX_STEPS/100);
-    IUFillNumberVector(&Focus1StepNP, Focus1StepN, 1, getDeviceName(), "FOCUS1_STEPSIZE", "Step Size", FOCUS_TAB, IP_RW, 60, IPS_OK);
-
-    IUFillNumber(&Focus1AbsPosN[0], "FOCUS1_ABSOLUTE_POSITION", "Steps", "%0.0f", 0, MAX_STEPS, (int)MAX_STEPS/100,0);
+    IUFillNumber(&Focus1AbsPosN[0], "FOCUS1_ABSOLUTE_POSITION", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
     IUFillNumberVector(&Focus1AbsPosNP, Focus1AbsPosN, 1, getDeviceName(), "FOCUS1_ABS", "Absolute Position", FOCUS_TAB, IP_RW, 0, IPS_OK);
 
 	// sensors
-    IUFillNumber(&Sensor1N[0], "SENSOR1_TEMP", "Temperature [C]", "%0.0f", 0, 100, 0, 0);
-    IUFillNumber(&Sensor1N[1], "SENSOR1_HUM", "Humidity [%]", "%0.0f", 0, 100, 0, 0);
-    IUFillNumber(&Sensor1N[2], "SENSOR1_DEW", "Dew Point [C]", "%0.0f", 0, 100, 0, 0);
+    IUFillNumber(&Sensor1N[0], "SENSOR1_TEMP", "Temperature [C]", "%4.2f", 0, 100, 0, 0);
+    IUFillNumber(&Sensor1N[1], "SENSOR1_HUM", "Humidity [%]", "%4.2f", 0, 100, 0, 0);
+    IUFillNumber(&Sensor1N[2], "SENSOR1_DEW", "Dew Point [C]", "%4.2f", 0, 100, 0, 0);
     IUFillNumberVector(&Sensor1NP, Sensor1N, 3, getDeviceName(), "SENSOR1", "Sensor 1", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);	
 
 	// pwm
-    IUFillNumber(&PWM1N[0], "PWM1_VAL", "Value", "%0.0f", 0, 100, 10, 0);
+    IUFillNumber(&PWM1N[0], "PWM1_VAL", "Value", "%03d", 0, 100, 10, 0);
     IUFillNumberVector(&PWM1NP, PWM1N, 1, getDeviceName(), "PWM1", "PWM 1", POWER_TAB, IP_RW, 60, IPS_OK);
 
-    IUFillNumber(&PWM2N[0],"PWM2_VAL", "Value", "%0.0f", 0, 100, 10, 0);
+    IUFillNumber(&PWM2N[0],"PWM2_VAL", "Value", "%03d", 0, 100, 10, 0);
     IUFillNumberVector(&PWM2NP, PWM2N, 1, getDeviceName(), "PWM2", "PWM 2", POWER_TAB, IP_RW, 60, IPS_OK);
 
     serialConnection = new Connection::Serial(this);
@@ -260,7 +257,6 @@ bool IndiAstrolink4::updateProperties()
 		defineSwitch(&Power2SP);
 		defineSwitch(&Power3SP);
 		defineSwitch(&Focus1MotionSP);
-		defineNumber(&Focus1StepNP);
 		defineNumber(&Focus1AbsPosNP);
 		defineNumber(&Sensor1NP);
 		defineNumber(&PWM1NP);
@@ -273,7 +269,6 @@ bool IndiAstrolink4::updateProperties()
 		deleteProperty(Power2SP.name);
 		deleteProperty(Power3SP.name);
 		deleteProperty(Focus1MotionSP.name);
-		deleteProperty(Focus1StepNP.name);
 		deleteProperty(Focus1AbsPosNP.name);
 		deleteProperty(Sensor1NP.name);
 		deleteProperty(PWM1NP.name);
@@ -301,9 +296,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 
 			char stepval[8];
 			char newval[8];
-			sprintf(stepval, "R:0:%0.0f", Focus1AbsPosN[0].value);
+			sprintf(stepval, "R:0:%d", Focus1AbsPosN[0].value);
 			serialCom(stepval);
-			sprintf(newval, "p:%0.0f", Focus1AbsPosN[0].value);
+			sprintf(newval, "p:%d", Focus1AbsPosN[0].value);
 
 			// loop until new position is reached
 			while ( strcmp(serialCom("p:0"), newval) )
@@ -315,7 +310,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			// if reached new position update client
 			if (!strcmp(serialCom("p:0"),newval))
 			{
-				IDMessage(getDeviceName(), "Focuser at the position %0.0f", Focus1AbsPosN[0].value);
+				IDMessage(getDeviceName(), "Focuser at the position %d", Focus1AbsPosN[0].value);
 				IDSetNumber(&Focus1AbsPosNP, NULL);
 				return true;
 			} else {
@@ -340,9 +335,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 
 			char stepval[8];
 			char newval[8];
-			sprintf(stepval, "R:0:%0.0f", Focus1AbsPosN[0].value);
+			sprintf(stepval, "R:0:%d", Focus1AbsPosN[0].value);
 			serialCom(stepval);
-			sprintf(newval, "p:%0.0f", Focus1AbsPosN[0].value);
+			sprintf(newval, "p:%d", Focus1AbsPosN[0].value);
 
 			// loop until new position is reached
 			while ( strcmp(serialCom("p:0"), newval) )
@@ -354,7 +349,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			// if reached new position update client
 			if (!strcmp(serialCom("p:0"),newval))
 			{
-				IDMessage(getDeviceName(), "Focuser at the position %0.0f", Focus1AbsPosN[0].value);
+				IDMessage(getDeviceName(), "Focuser at the position %d", Focus1AbsPosN[0].value);
 				IDSetNumber(&Focus1AbsPosNP, NULL);
 				return true;
 			} else {
@@ -368,9 +363,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			IUUpdateNumber(&PWM1NP,values,names,n);
 			char pwmval[8];
 			char newval[8];
-			sprintf(pwmval, "B:0:%0.0f", PWM1N[0].value);
+			sprintf(pwmval, "B:0:%d", PWM1N[0].value);
 			serialCom(pwmval);
-			sprintf(newval, "b:%0.0f", PWM1N[0].value);
+			sprintf(newval, "b:%d", PWM1N[0].value);
 			if (!strcmp(serialCom("b:0"),newval))
 			{
 				PWM1NP.s=IPS_OK;
@@ -387,9 +382,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 			IUUpdateNumber(&PWM2NP,values,names,n);
 			char pwmval[8];
 			char newval[8];
-			sprintf(pwmval, "B:1:%0.0f", PWM2N[0].value);
+			sprintf(pwmval, "B:1:%d", PWM2N[0].value);
 			serialCom(pwmval);
-			sprintf(newval, "b:%0.0f", PWM2N[0].value);
+			sprintf(newval, "b:%d", PWM2N[0].value);
 			if (!strcmp(serialCom("b:1"),newval))
 			{
 				PWM2NP.s=IPS_OK;
