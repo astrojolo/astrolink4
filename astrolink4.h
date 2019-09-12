@@ -35,6 +35,7 @@ class AstroLink4 : public INDI::DefaultDevice
   protected:
     const char *getDefaultName();
     virtual void TimerHit() override;
+	virtual bool saveConfigItems(FILE *fp) override;
     
   private:
 	bool Handshake();

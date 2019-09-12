@@ -69,7 +69,7 @@ void ISSnoopDevice(XMLEle *root)
 //////////////////////////////////////////////////////////////////////
 ///
 //////////////////////////////////////////////////////////////////////
-AstroLink4::AstroLink4() :
+AstroLink4::AstroLink4()
 {
     setVersion(0, 1);
 }
@@ -88,10 +88,10 @@ bool AstroLink4::initProperties()
     addSimulationControl();
     
     IUFillNumber(&FocuserPosReadN[0], "FOCUS_ABSOLUTE_POSITION", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
-    IUFillNumberVector(&FocuserPosReadNP, FocuserPosReadN, 1, getDeviceName(), "FOCUS_ABS", "Focuser Position", FOCUS_TAB, IP_RO, 0, IPS_OK);
+    IUFillNumberVector(&FocuserPosReadNP, FocuserPosReadN, 1, getDeviceName(), "FOCUS_POS", "Focuser Position", FOCUS_TAB, IP_RO, 0, IPS_OK);
     
-    IUFillNumber(&FocuserMoveToN[0], "FOCUS_ABSOLUTE_POSITION", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
-    IUFillNumberVector(&FocuserMoveToNP, FocuserMoveToN, 1, getDeviceName(), "FOCUS_ABS", "Move To", FOCUS_TAB, IP_WO, 0, IPS_OK);
+    IUFillNumber(&FocuserMoveToN[0], "FOCUS_MOVEMENT", "Steps", "%06d", 0, MAX_STEPS, 50, 0);
+    IUFillNumberVector(&FocuserMoveToNP, FocuserMoveToN, 1, getDeviceName(), "FOCUS_MOV", "Move To", FOCUS_TAB, IP_WO, 0, IPS_OK);
 }
 
 bool AstroLink4::updateProperties()
@@ -101,10 +101,12 @@ bool AstroLink4::updateProperties()
     if (isConnected())
     {
     	defineNumber(&FocusAbsPosNP);
+		defineNumber(&FocuserMoveToNP);
     }
     else
     {
     	deleteProperty(FocusAbsPosNP.name);
+		deleteProperty(FocuserMoveToNP.name);
     }
 }
 
@@ -114,10 +116,10 @@ bool AstroLink4::updateProperties()
 bool AstroLink4::sendMoveTo(uint8_t newPos)
 {
     char cmd[10] = {0}, res[10] = {0};
-    snprintf(cmd, 10, "R:0:%d", voltage);
+    snprintf(cmd, 10, "R:0:%d", newPos);
     if (sendCommand(cmd, res))
     {
-        return (!strcmp(res, cmd));
+        return true;
     }
     return false;
 }
@@ -170,7 +172,7 @@ bool AstroLink4::readDeviceData()
         FocuserPosReadN[0].value = std::stod(result[1]);
         IDSetNumber(&FocuserPosReadNP, NULL);
 
-        return true;
+		return true;
     }
     return false;
 }
@@ -188,7 +190,7 @@ bool AstroLink4::Handshake()
 
     if (isSimulation())
     {
-        snprintf(response, ASTROLINK4_LEN, "#:AstroLink 4 mini"");
+        snprintf(response, ASTROLINK4_LEN, "#:AstroLink4mini"");
         nbytes_read = 8;
     }
     else
@@ -205,7 +207,6 @@ bool AstroLink4::Handshake()
             return false;
         }
 
-        // Try first with stopChar as the stop character
         if ( (tty_rc = tty_nread_section(PortFD, response, ASTROLINK4_LEN, stopChar, 1, &nbytes_read)) != TTY_OK)
         {
             // Try once more
@@ -252,7 +253,7 @@ bool AstroLink4::sendCommand(const char * cmd, char * res)
     {
         if (!strcmp(cmd, "p"))
         {
-            strncpy(res, "p:12", ASTROLINK4_LEN);
+            strncpy(res, "p:1234", ASTROLINK4_LEN);
         }
         else if (res)
         {
@@ -281,7 +282,7 @@ bool AstroLink4::sendCommand(const char * cmd, char * res)
         tcflush(PortFD, TCIOFLUSH);
         res[nbytes_read - 1] = '\0';
         LOGF_DEBUG("RES <%s>", res);
-        return true;
+        return (cmd[0] == res[0]);
     }
 
     if (tty_rc != TTY_OK)
@@ -294,6 +295,18 @@ bool AstroLink4::sendCommand(const char * cmd, char * res)
     return false;
 }
 
+//////////////////////////////////////////////////////////////////////
+///
+//////////////////////////////////////////////////////////////////////
+bool AstroLink4::saveConfigItems(FILE * fp)
+{
+	INDI::DefaultDevice::saveConfigItems(fp);
+	
+	IUSaveConfigNumber(fp, &FocuserMoveToN);
+	return true;
+}
+		
+		
 /*
 		parsed data:
 		sensor[0] = q
