@@ -15,23 +15,16 @@
  the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  Boston, MA 02110-1301, USA.
 *******************************************************************************/
-#include "indicom.h"
-#include "connectionplugins/connectionserial.h"
+#include "indi_astrolink4.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
+#include "indicom.h"
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
-#include <stdio.h>
-#include <string.h>
 #include <memory>
 #include <regex>
 #include <cstring>
-#include <sys/ioctl.h>
-#include <chrono>
-#include <iomanip>
-#include "indi_astrolink4.h"
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 1
@@ -45,51 +38,36 @@
 std::unique_ptr<IndiAstrolink4> indiAstrolink4(new IndiAstrolink4());
 
 void ISPoll(void *p);
-void ISInit()
-{
-   static int isInit = 0;
 
-   if (isInit == 1)
-       return;
-
-    isInit = 1;
-    if(indiAstrolink4.get() == 0) indiAstrolink4.reset(new IndiAstrolink4());
-
-}
 void ISGetProperties(const char *dev)
 {
-	ISInit();
 	indiAstrolink4->ISGetProperties(dev);
 }
 void ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int num)
 {
-	ISInit();
 	indiAstrolink4->ISNewSwitch(dev, name, states, names, num);
 }
 void ISNewText(	const char *dev, const char *name, char *texts[], char *names[], int num)
 {
-	ISInit();
 	indiAstrolink4->ISNewText(dev, name, texts, names, num);
 }
 void ISNewNumber(const char *dev, const char *name, double values[], char *names[], int num)
 {
-	ISInit();
 	indiAstrolink4->ISNewNumber(dev, name, values, names, num);
 }
 void ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int num)
 {
-	INDI_UNUSED(dev);
-	INDI_UNUSED(name);
-	INDI_UNUSED(sizes);
-	INDI_UNUSED(blobsizes);
-	INDI_UNUSED(blobs);
-	INDI_UNUSED(formats);
-	INDI_UNUSED(names);
-	INDI_UNUSED(num);
+    INDI_UNUSED(dev);
+    INDI_UNUSED(name);
+    INDI_UNUSED(sizes);
+    INDI_UNUSED(blobsizes);
+    INDI_UNUSED(blobs);
+    INDI_UNUSED(formats);
+    INDI_UNUSED(names);
+    INDI_UNUSED(num);
 }
 void ISSnoopDevice (XMLEle *root)
 {
-    ISInit();
     indiAstrolink4->ISSnoopDevice(root);
 }
 IndiAstrolink4::IndiAstrolink4()
@@ -98,30 +76,21 @@ IndiAstrolink4::IndiAstrolink4()
 }
 bool IndiAstrolink4::Handshake()
 {
-	if (isSimulation()) {
-		IDMessage(getDeviceName(), "Simulation: connected");
-		PortFD = 1;
-	} else {
-		// get port
-		PortFD = serialConnection->getPortFD();
-		
-		// check device
-        char res[ASTROLINK4_LEN] = {0};
-        if(sendCommand("#", res))
+    // check device
+    char res[ASTROLINK4_LEN] = {0};
+    if(sendCommand("#", res))
+    {
+        if(strncmp(res, "#:AstroLink4mini", 15) != 0)
         {
-            if(strncmp(res, "#:AstroLink4mini", 15) != 0)
-            {
-                LOG_ERROR("Device not recognized.");
-                return false;
-            }
-            else
-            {
-                SetTimer(TIMERDELAY);
-                return true;
-            }
+            LOG_ERROR("Device not recognized.");
+            return false;
+        }
+        else
+        {
+            SetTimer(TIMERDELAY);
+            return true;
         }
     }
-    return true;
 }
 
 void IndiAstrolink4::TimerHit()
@@ -147,14 +116,13 @@ void IndiAstrolink4::TimerHit()
             Sensor1NP.s=IPS_OK;
             IDSetNumber(&Sensor1NP, NULL);
 
-
-            // update values of various controls
-            /*Focus1AbsPosN[0].value = atof(sensor[1]);
+            Focus1AbsPosN[0].value = std::stod(result[1]);
             IDSetNumber(&Focus1AbsPosNP, NULL);
-            PWM1N[0].value = atof(sensor[10]);
+
+            PWM1N[0].value = std::stod(result[10]);
             IDSetNumber(&PWM1NP, NULL);
-            PWM2N[0].value = atof(sensor[11]);
-            IDSetNumber(&PWM2NP, NULL);*/
+            PWM2N[0].value = std::stod(result[11]);
+            IDSetNumber(&PWM2NP, NULL);
 
         }
 
@@ -227,10 +195,10 @@ bool IndiAstrolink4::initProperties()
     IUFillNumberVector(&Sensor1NP, Sensor1N, 3, getDeviceName(), "SENSOR1", "DHT sensor", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);
 
 	// pwm
-    IUFillNumber(&PWM1N[0], "PWM1_VAL", "Value", "%03d", 0, 100, 10, 0);
+    IUFillNumber(&PWM1N[0], "PWM1_VAL", "Value", "%3.0f", 0, 100, 10, 0);
     IUFillNumberVector(&PWM1NP, PWM1N, 1, getDeviceName(), "PWM1", "PWM 1", POWER_TAB, IP_RW, 60, IPS_OK);
 
-    IUFillNumber(&PWM2N[0],"PWM2_VAL", "Value", "%03d", 0, 100, 10, 0);
+    IUFillNumber(&PWM2N[0],"PWM2_VAL", "Value", "%3.0f", 0, 100, 10, 0);
     IUFillNumberVector(&PWM2NP, PWM2N, 1, getDeviceName(), "PWM2", "PWM 2", POWER_TAB, IP_RW, 60, IPS_OK);
 
     serialConnection = new Connection::Serial(this);
@@ -238,7 +206,7 @@ bool IndiAstrolink4::initProperties()
 	registerConnection(serialConnection);
 
 	serialConnection->setDefaultPort("/dev/ttyUSB0");
-//	serialConnection->setDefaultBaudRate(B_115200);
+    serialConnection->setDefaultBaudRate(serialConnection->B_115200);
 
     return true;
 }
@@ -288,7 +256,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 		// handle focuser 1 - absolute
 		if (!strcmp(name, Focus1AbsPosNP.name))
 		{
-			IUUpdateNumber(&Focus1AbsPosNP,values,names,n);
+            IUUpdateNumber(&Focus1AbsPosNP, values, names, n);
 
 			char stepval[8];
 			char newval[8];
@@ -452,14 +420,7 @@ bool IndiAstrolink4::ISNewText (const char *dev, const char *name, char *texts[]
 {
 	return INDI::DefaultDevice::ISNewText (dev, name, texts, names, n);
 }
-bool IndiAstrolink4::ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int n)
-{
-	return INDI::DefaultDevice::ISNewBLOB (dev, name, sizes, blobsizes, blobs, formats, names, n);
-}
-bool IndiAstrolink4::ISSnoopDevice(XMLEle *root)
-{
-    return INDI::DefaultDevice::ISSnoopDevice(root);
-}
+
 bool IndiAstrolink4::saveConfigItems(FILE *fp)
 {
 	IUSaveConfigSwitch(fp, &Power1SP);
@@ -507,36 +468,43 @@ char* IndiAstrolink4::serialCom(const char* input)
 bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 {
     int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
-
     char command[ASTROLINK4_LEN];
     char buffer[ASTROLINK4_LEN];
-    tcflush(PortFD, TCIOFLUSH);
-    sprintf(command, "%s\n", cmd);
-    if ( (tty_rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
-        return false;
 
-    if (!res)
+    if(isSimulation())
+    {
+        if(strcmp(cmd, "#") == 0) sprintf(res, "%s\n", "#:AstroLink4mini");
+        if(strcmp(cmd, "q") == 0) sprintf(res, "%s\n", "q:1234:0:1.07:1:2.12:45.1:-12.81:0:0:45:0:0:0:1:12.1:5.0:1.12:13.41:0:34:0:0");
+    }
+    else
     {
         tcflush(PortFD, TCIOFLUSH);
-        return true;
+        sprintf(command, "%s\n", cmd);
+        if ( (tty_rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
+            return false;
+
+        if (!res)
+        {
+            tcflush(PortFD, TCIOFLUSH);
+            return true;
+        }
+
+        if ( (tty_rc = tty_nread_section(PortFD, res, ASTROLINK4_LEN, stopChar, ASTROLINK4_TIMEOUT, &nbytes_read)) != TTY_OK || nbytes_read == 1)
+            return false;
+
+        tcflush(PortFD, TCIOFLUSH);
+        res[nbytes_read - 1] = '\0';
+        LOGF_DEBUG("RES <%s>", res);
+
+        if (tty_rc != TTY_OK)
+        {
+            char errorMessage[MAXRBUF];
+            tty_error_msg(tty_rc, errorMessage, MAXRBUF);
+            LOGF_ERROR("Serial error: %s", errorMessage);
+            return false;
+        }
     }
-
-    if ( (tty_rc = tty_nread_section(PortFD, res, ASTROLINK4_LEN, stopChar, ASTROLINK4_TIMEOUT, &nbytes_read)) != TTY_OK || nbytes_read == 1)
-        return false;
-
-    tcflush(PortFD, TCIOFLUSH);
-    res[nbytes_read - 1] = '\0';
-    LOGF_DEBUG("RES <%s>", res);
     return (cmd[0] == res[0]);
-
-    if (tty_rc != TTY_OK)
-    {
-        char errorMessage[MAXRBUF];
-        tty_error_msg(tty_rc, errorMessage, MAXRBUF);
-        LOGF_ERROR("Serial error: %s", errorMessage);
-    }
-
-    return false;
 }
 
 //////////////////////////////////////////////////////////////////////
