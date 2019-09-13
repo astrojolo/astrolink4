@@ -24,9 +24,10 @@
 #include <stdio.h>
 
 #include <defaultdevice.h>
+#include <indifocuserinterface.h>
 #include <connectionplugins/connectionserial.h>
 
-class IndiAstrolink4 : public INDI::DefaultDevice
+class IndiAstrolink4 : public INDI::DefaultDevice, public INDI::FocuserInterface
 {
 
 public:
@@ -36,15 +37,25 @@ public:
 	
 	virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
 	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
-    virtual bool ISNewText(const char * dev, const char * name, char * texts[], char * names[], int n)
+    virtual bool ISNewText(const char * dev, const char * name, char * texts[], char * names[], int n);
 	
 protected:
 	virtual const char *getDefaultName();
 	virtual void TimerHit();
 	virtual bool saveConfigItems(FILE *fp);
 	Connection::Serial *serialConnection = NULL;
-	virtual char* serialCom(const char* input);
     virtual bool sendCommand(const char * cmd, char * res);
+
+    // Focuser Overrides
+    virtual IPState MoveAbsFocuser(uint32_t targetTicks) override;
+    virtual IPState MoveRelFocuser(FocusDirection dir, uint32_t ticks) override;
+    virtual bool AbortFocuser() override;
+    virtual bool ReverseFocuser(bool enabled) override;
+    virtual bool SyncFocuser(uint32_t ticks) override;
+
+    virtual bool SetFocuserBacklash(int32_t steps) override;
+    virtual bool SetFocuserBacklashEnabled(bool enabled) override;
+
 	
 private:
 	virtual bool Handshake();
@@ -59,11 +70,6 @@ private:
 	ISwitchVectorProperty Power2SP;
 	ISwitch Power3S[2];
 	ISwitchVectorProperty Power3SP;
-	ISwitch Focus1MotionS[2];
-	ISwitchVectorProperty Focus1MotionSP;
-    
-	INumber Focus1AbsPosN[1];
-	INumberVectorProperty Focus1AbsPosNP;
     
 	INumber Sensor1N[3];
 	INumberVectorProperty Sensor1NP;
@@ -78,7 +84,6 @@ private:
     ITextVectorProperty PowerLabelsTP;
     
 	static constexpr const char *POWER_TAB {"Power"};
-	static constexpr const char *FOCUS_TAB {"Focuser"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
 };
