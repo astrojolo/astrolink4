@@ -34,10 +34,9 @@ public:
 	virtual bool initProperties();
 	virtual bool updateProperties();
 	
-	virtual void ISGetProperties(const char *dev);
 	virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
 	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
-	virtual bool ISNewText (const char *dev, const char *name, char *texts[], char *names[], int n);
+    virtual bool ISNewText(const char * dev, const char * name, char * texts[], char * names[], int n)
 	
 protected:
 	virtual const char *getDefaultName();
@@ -49,10 +48,11 @@ protected:
 	
 private:
 	virtual bool Handshake();
-	int PortFD=-1;
+	int PortFD = -1;
 	int counter;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     char stopChar { 0xA };	// new line
+    
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
 	ISwitch Power2S[2];
@@ -61,17 +61,26 @@ private:
 	ISwitchVectorProperty Power3SP;
 	ISwitch Focus1MotionS[2];
 	ISwitchVectorProperty Focus1MotionSP;
+    
 	INumber Focus1AbsPosN[1];
 	INumberVectorProperty Focus1AbsPosNP;
+    
 	INumber Sensor1N[3];
 	INumberVectorProperty Sensor1NP;
-	INumber PWM1N[1];
-	INumberVectorProperty PWM1NP;
-	INumber PWM2N[1];
-	INumberVectorProperty PWM2NP;
+    
+	INumber PWMN[2];
+	INumberVectorProperty PWMNP;
+    
+    INumber PowerDataN[5];
+    INumberVectorProperty PowerDataNP;
+    
+    IText PowerLabelsT[3] = {};
+    ITextVectorProperty PowerLabelsTP;
+    
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *FOCUS_TAB {"Focuser"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
+    static constexpr const char *SETTINGS_TAB {"Settings"};
 };
 
 #endif
