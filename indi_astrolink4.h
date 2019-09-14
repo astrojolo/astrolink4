@@ -25,9 +25,10 @@
 
 #include <defaultdevice.h>
 #include <indifocuserinterface.h>
+#include <indiweatherinterface.h>
 #include <connectionplugins/connectionserial.h>
 
-class IndiAstrolink4 : public INDI::DefaultDevice, public INDI::FocuserInterface
+class IndiAstrolink4 : public INDI::DefaultDevice, public INDI::FocuserInterface, public INDI::WeatherInterface
 {
 
 public:
@@ -56,12 +57,19 @@ protected:
     virtual bool SetFocuserBacklash(int32_t steps) override;
     virtual bool SetFocuserBacklashEnabled(bool enabled) override;
 
+    // Weather Overrides
+    virtual IPState updateWeather() override
+    {
+        return IPS_OK;
+    }
+
 	
 private:
 	virtual bool Handshake();
 	int PortFD = -1;
 	int counter;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
+    bool setAutoPWM();
     char stopChar { 0xA };	// new line
     
 	ISwitch Power1S[2];
@@ -76,6 +84,9 @@ private:
     
 	INumber PWMN[2];
 	INumberVectorProperty PWMNP;
+
+    ISwitch AutoPWMS[2];
+    ISwitchVectorProperty AutoPWMSP;
     
     INumber PowerDataN[5];
     INumberVectorProperty PowerDataNP;

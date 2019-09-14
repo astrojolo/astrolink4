@@ -27,9 +27,9 @@
 #include <cstring>
 
 #define VERSION_MAJOR 0
-#define VERSION_MINOR 4
+#define VERSION_MINOR 5
 
-#define TIMERDELAY          3000 // 3s delay for sensors readout
+#define TIMERDELAY          2000 // 3s delay for sensors readout
 #define MAX_STEPS           10000 // maximum steppers' value
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
@@ -64,7 +64,7 @@ void ISSnoopDevice (XMLEle *root)
     indiAstrolink4->ISSnoopDevice(root);
 }
 
-IndiAstrolink4::IndiAstrolink4() : FI(this)
+IndiAstrolink4::IndiAstrolink4() : FI(this), WI(this)
 {
 	setVersion(VERSION_MAJOR,VERSION_MINOR);
 }
@@ -120,11 +120,19 @@ void IndiAstrolink4::TimerHit()
                 IDSetNumber(&FocusAbsPosNP, nullptr);
                 IDSetNumber(&FocusRelPosNP, nullptr);
 
-                Sensor1N[0].value = std::stod(result[5]);
-                Sensor1N[1].value = std::stod(result[6]);
-                Sensor1N[2].value = std::stod(result[7]);
-                Sensor1NP.s=IPS_OK;
-                IDSetNumber(&Sensor1NP, NULL);
+                // Environment Sensors
+                setParameterValue("WEATHER_TEMPERATURE", std::stod(result[5]));
+                setParameterValue("WEATHER_HUMIDITY", std::stod(result[6]));
+                setParameterValue("WEATHER_DEWPOINT", std::stod(result[7]));
+                WI::syncCriticalParameters();
+                ParametersNP.s = IPS_OK;
+                IDSetNumber(&ParametersNP, nullptr);
+
+                //Sensor1N[0].value = std::stod(result[5]);
+                //Sensor1N[1].value = std::stod(result[6]);
+                //Sensor1N[2].value = std::stod(result[7]);
+                //Sensor1NP.s=IPS_OK;
+                //IDSetNumber(&Sensor1NP, NULL);
                 
                 PWMN[0].value = std::stod(result[10]);
                 PWMN[1].value = std::stod(result[11]);
@@ -191,7 +199,7 @@ bool IndiAstrolink4::initProperties()
 {
     INDI::DefaultDevice::initProperties();
 
-    setDriverInterface(AUX_INTERFACE | FOCUSER_INTERFACE);
+    setDriverInterface(AUX_INTERFACE | FOCUSER_INTERFACE | WEATHER_INTERFACE);
 
     FI::SetCapability(FOCUSER_CAN_ABS_MOVE |
                       FOCUSER_CAN_REL_MOVE |
@@ -201,6 +209,7 @@ bool IndiAstrolink4::initProperties()
                       FOCUSER_HAS_BACKLASH);
 
     FI::initProperties(FOCUS_TAB);
+    WI::initProperties(ENVIRONMENT_TAB, ENVIRONMENT_TAB);
 
     addAuxControls();
 
@@ -233,24 +242,31 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
     IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "12V out 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
-    // sensors
-    IUFillNumber(&Sensor1N[0], "SENSOR1_TEMP", "Temperature [C]", "%4.2f", 0, 100, 0, 0);
-    IUFillNumber(&Sensor1N[1], "SENSOR1_HUM", "Humidity [%]", "%4.2f", 0, 100, 0, 0);
-    IUFillNumber(&Sensor1N[2], "SENSOR1_DEW", "Dew Point [C]", "%4.2f", 0, 100, 0, 0);
-    IUFillNumberVector(&Sensor1NP, Sensor1N, 3, getDeviceName(), "SENSOR1", "DHT sensor", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);
-
 	// pwm
     IUFillNumber(&PWMN[0], "PWM1_VAL", "A", "%3.0f", 0, 100, 10, 0);
     IUFillNumber(&PWMN[1], "PWM2_VAL", "B", "%3.0f", 0, 100, 10, 0);
     IUFillNumberVector(&PWMNP, PWMN, 2, getDeviceName(), "PWM", "PWM", POWER_TAB, IP_RW, 60, IPS_OK);
+
+    // Auto pwm
+    IUFillSwitch(&AutoPWMS[0], "PWMA_A", "A", ISS_OFF);
+    IUFillSwitch(&AutoPWMS[1], "PWMA_B", "B", ISS_OFF);
+    IUFillSwitchVector(&AutoPWMSP, AutoPWMS, 2, getDeviceName(), "AUTO_PWM", "Auto PWM", POWER_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
     
-    IUFillNumber(&PowerDataN[0],"VIN", "Input voltage", "%3.0f", 0, 15, 10, 0);
-    IUFillNumber(&PowerDataN[1],"VREG", "Regulated voltage", "%3.0f", 0, 15, 10, 0);
-    IUFillNumber(&PowerDataN[2],"ITOT", "Total current", "%3.0f", 0, 15, 10, 0);
-    IUFillNumber(&PowerDataN[3],"AH", "Energy consumed [Ah]", "%3.0f", 0, 1000, 10, 0);
-    IUFillNumber(&PowerDataN[4],"WH", "Energy consumed [Wh]", "%3.0f", 0, 10000, 10, 0);
+    IUFillNumber(&PowerDataN[0],"VIN", "Input voltage", "%.1f", 0, 15, 10, 0);
+    IUFillNumber(&PowerDataN[1],"VREG", "Regulated voltage", "%.1f", 0, 15, 10, 0);
+    IUFillNumber(&PowerDataN[2],"ITOT", "Total current", "%.1f", 0, 15, 10, 0);
+    IUFillNumber(&PowerDataN[3],"AH", "Energy consumed [Ah]", "%.1f", 0, 1000, 10, 0);
+    IUFillNumber(&PowerDataN[4],"WH", "Energy consumed [Wh]", "%.1f", 0, 10000, 10, 0);
     IUFillNumberVector(&PowerDataNP, PowerDataN, 5, getDeviceName(), "POWER_DATA", "Power data", POWER_TAB, IP_RO, 60, IPS_OK);
     
+    ////////////////////////////////////////////////////////////////////////////
+    /// Environment Group
+    ////////////////////////////////////////////////////////////////////////////
+    addParameter("WEATHER_TEMPERATURE", "Temperature (C)", -15, 35, 15);
+    addParameter("WEATHER_HUMIDITY", "Humidity %", 0, 100, 15);
+    addParameter("WEATHER_DEWPOINT", "Dew Point (C)", 0, 100, 15);
+    setCriticalParameter("WEATHER_TEMPERATURE");
+
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]() { return Handshake();});
 	registerConnection(serialConnection);
@@ -271,11 +287,13 @@ bool IndiAstrolink4::updateProperties()
 		defineSwitch(&Power1SP);
 		defineSwitch(&Power2SP);
 		defineSwitch(&Power3SP);
+        defineSwitch(&AutoPWMSP);
 		defineNumber(&Sensor1NP);
 		defineNumber(&PWMNP);
         defineNumber(&PowerDataNP);
         defineText(&PowerLabelsTP);
         FI::updateProperties();
+        WI::updateProperties();
     }
     else
     {
@@ -283,11 +301,13 @@ bool IndiAstrolink4::updateProperties()
 		deleteProperty(Power1SP.name);
 		deleteProperty(Power2SP.name);
 		deleteProperty(Power3SP.name);
+        deleteProperty(AutoPWMSP.name);
 		deleteProperty(Sensor1NP.name);
 		deleteProperty(PWMNP.name);
         deleteProperty(PowerDataNP.name);
         deleteProperty(PowerLabelsTP.name);
         FI::updateProperties();
+        WI::updateProperties();
     }
 
     return true;
@@ -326,6 +346,8 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
 
     if (strstr(name, "FOCUS_"))
         return FI::processNumber(dev, name, values, names, n);
+    if (strstr(name, "WEATHER_"))
+        return WI::processNumber(dev, name, values, names, n);
 
 	return INDI::DefaultDevice::ISNewNumber(dev,name,values,names,n);
 }
@@ -379,6 +401,28 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         }
 	}
 
+    // Auto PWM
+    if (!strcmp(name, AutoPWMSP.name))
+    {
+        ISState pwmA = AutoPWMS[0].s;
+        ISState pwmB = AutoPWMS[1].s;
+        IUUpdateSwitch(&AutoPWMSP, states, names, n);
+        if (setAutoPWM())
+        {
+            AutoPWMSP.s = IPS_OK;
+        }
+        else
+        {
+            IUResetSwitch(&AutoPWMSP);
+            AutoPWMS[0].s = pwmA;
+            AutoPWMS[1].s = pwmB;
+            AutoPWMSP.s = IPS_ALERT;
+        }
+
+        IDSetSwitch(&AutoPWMSP, nullptr);
+        return true;
+    }
+
     if (strstr(name, "FOCUS"))
         return FI::processSwitch(dev, name, states, names, n);
 
@@ -413,6 +457,24 @@ bool IndiAstrolink4::saveConfigItems(FILE *fp)
     IUSaveConfigText(fp, &PowerLabelsTP);
     return true;
 }
+//////////////////////////////////////////////////////////////////////
+///
+//////////////////////////////////////////////////////////////////////
+bool IndiAstrolink4::setAutoPWM()
+{
+    char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
+    bool allOk = true;
+
+    uint8_t valA = (AutoPWMS[0].s == ISS_ON) ? 255 : static_cast<uint8_t>(PWMN[0].value);
+    uint8_t valB = (AutoPWMS[1].s == ISS_ON) ? 255 : static_cast<uint8_t>(PWMN[1].value);
+
+    snprintf(cmd, ASTROLINK4_LEN, "B:0:%d", valA);
+    allOk = allOk && sendCommand(cmd, res);
+    snprintf(cmd, ASTROLINK4_LEN, "B:1:%d", valB);
+    allOk = allOk && sendCommand(cmd, res);
+
+    return allOk;
+}
 
 //////////////////////////////////////////////////////////////////////
 ///
@@ -444,7 +506,7 @@ bool IndiAstrolink4::ReverseFocuser(bool enabled)
 
 bool IndiAstrolink4::SyncFocuser(uint32_t ticks)
 {
-   char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
+    char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
     snprintf(cmd, ASTROLINK4_LEN, "P:%u", ticks);
     return sendCommand(cmd, res);
 }
@@ -474,7 +536,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
     if(isSimulation())
     {
         if(strcmp(cmd, "#") == 0) sprintf(res, "%s\n", "#:AstroLink4mini");
-        if(strcmp(cmd, "q") == 0) sprintf(res, "%s\n", "q:1234:0:1.07:1:2.12:45.1:-12.81:0:0:45:0:0:0:1:12.1:5.0:1.12:13.41:0:34:0:0");
+        if(strcmp(cmd, "q") == 0) sprintf(res, "%s\n", "q:1234:0:1.47:1:2.12:45.1:-12.81:0:0:45:0:0:0:1:12.1:5.0:1.12:13.41:0:34:0:0");
         if(strcmp(cmd, "p") == 0) sprintf(res, "%s\n", "p:1234");
         if(strcmp(cmd, "i") == 0) sprintf(res, "%s\n", "i:0");
         if(strncmp(cmd, "R", 1) == 0) sprintf(res, "%s\n", "R:");
