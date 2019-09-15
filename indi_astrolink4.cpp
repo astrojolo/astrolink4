@@ -127,12 +127,6 @@ void IndiAstrolink4::TimerHit()
                 WI::syncCriticalParameters();
                 ParametersNP.s = IPS_OK;
                 IDSetNumber(&ParametersNP, nullptr);
-
-                //Sensor1N[0].value = std::stod(result[5]);
-                //Sensor1N[1].value = std::stod(result[6]);
-                //Sensor1N[2].value = std::stod(result[7]);
-                //Sensor1NP.s=IPS_OK;
-                //IDSetNumber(&Sensor1NP, NULL);
                 
                 PWMN[0].value = std::stod(result[10]);
                 PWMN[1].value = std::stod(result[11]);
@@ -167,6 +161,27 @@ void IndiAstrolink4::TimerHit()
             }
             PowerDataNP.s=IPS_OK;
             IDSetNumber(&PowerDataNP, NULL);
+        }
+
+        if(FocuserSettingsNP.s == IPS_IDLE)
+        {
+            if (sendCommand("u", res))
+            {
+                std::vector<std::string> result = split(res, ":");
+
+                FocuserSettingsN[FS_MAX_POS].value = std::stod(result[1]);
+                FocuserSettingsN[FS_SPEED].value = std::stod(result[2]);
+                FocuserSettingsN[FS_STEP_SIZE].value = std::stod(result[9]) / 100.0;
+                //FocuserSettingsN[FS_COMPENSATION].value = std::stod(result[2]);
+                FocuserSettingsNP.s = IPS_OK;
+                IDSetNumber(&FocuserSettingsNP, NULL);
+
+                if(!strcmp("1", result[7].c_str())) FocuserModeS[FS_MODE_UNI].s = ISS_ON;
+                if(!strcmp("2", result[7].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
+                if(!strcmp("3", result[7].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
+                FocuserModeSP.s = IPS_OK;
+                IDSetSwitch(&FocuserModeSP, NULL);
+            }
         }
 
 /*
@@ -450,32 +465,33 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             IDSetSwitch(&CompensateNowSP, NULL);
             return true;
         }
+
+        // Auto PWM
+        if (!strcmp(name, AutoPWMSP.name))
+        {
+            ISState pwmA = AutoPWMS[0].s;
+            ISState pwmB = AutoPWMS[1].s;
+            IUUpdateSwitch(&AutoPWMSP, states, names, n);
+            if (setAutoPWM())
+            {
+                AutoPWMSP.s = IPS_OK;
+            }
+            else
+            {
+                IUResetSwitch(&AutoPWMSP);
+                AutoPWMS[0].s = pwmA;
+                AutoPWMS[1].s = pwmB;
+                AutoPWMSP.s = IPS_ALERT;
+            }
+
+            IDSetSwitch(&AutoPWMSP, nullptr);
+            return true;
+        }
+
+        if (strstr(name, "FOCUS"))
+            return FI::processSwitch(dev, name, states, names, n);
+
 	}
-
-    // Auto PWM
-    if (!strcmp(name, AutoPWMSP.name))
-    {
-        ISState pwmA = AutoPWMS[0].s;
-        ISState pwmB = AutoPWMS[1].s;
-        IUUpdateSwitch(&AutoPWMSP, states, names, n);
-        if (setAutoPWM())
-        {
-            AutoPWMSP.s = IPS_OK;
-        }
-        else
-        {
-            IUResetSwitch(&AutoPWMSP);
-            AutoPWMS[0].s = pwmA;
-            AutoPWMS[1].s = pwmB;
-            AutoPWMSP.s = IPS_ALERT;
-        }
-
-        IDSetSwitch(&AutoPWMSP, nullptr);
-        return true;
-    }
-
-    if (strstr(name, "FOCUS"))
-        return FI::processSwitch(dev, name, states, names, n);
 
 	return INDI::DefaultDevice::ISNewSwitch (dev, name, states, names, n);
 }
@@ -605,7 +621,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
         if(strncmp(cmd, "B", 1) == 0) sprintf(res, "%s\n", "B:");
         if(strncmp(cmd, "H", 1) == 0) sprintf(res, "%s\n", "H:");
         if(strncmp(cmd, "P", 1) == 0) sprintf(res, "%s\n", "P:");
-        if(strncmp(cmd, "u", 1) == 0) sprintf(res, "%s\n", "u:0:0:0:0:0:0:0:0:0:0:0:0");
+        if(strncmp(cmd, "u", 1) == 0) sprintf(res, "%s\n", "u:25000:220:0:100:440:0:2:1:257:0:0:0:0:0:0:0:0");
         if(strncmp(cmd, "U", 1) == 0) sprintf(res, "%s\n", "U:");
         if(strncmp(cmd, "S", 1) == 0) sprintf(res, "%s\n", "S:");
     }
