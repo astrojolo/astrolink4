@@ -67,10 +67,12 @@ protected:
 private:
 	virtual bool Handshake();
 	int PortFD = -1;
-	int counter;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     bool setAutoPWM();
     char stopChar { 0xA };	// new line
+    bool backlashEnabled = false;
+    int32_t backlashSteps = 0;
+    FocusDirection lastMoveDirection = FOCUS_INWARD;
     
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
@@ -90,13 +92,32 @@ private:
     
     INumber PowerDataN[5];
     INumberVectorProperty PowerDataNP;
+
+    INumber CompensationValueN[1];
+    INumberVectorProperty CompensationValueNP;
+    ISwitch CompensateNowS[1];
+    ISwitchVectorProperty CompensateNowSP;
     
     IText PowerLabelsT[3] = {};
     ITextVectorProperty PowerLabelsTP;
+
+    INumber FocuserSettingsN[4];
+    INumberVectorProperty FocuserSettingsNP;
+    enum
+    {
+        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION
+    };
+    ISwitch FocuserModeS[3];
+    ISwitchVectorProperty FocuserModeSP;
+    enum
+    {
+      FS_MODE_UNI, FS_MODE_BI, FS_MODE_MICRO
+    };
     
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
+
 };
 
 #endif
