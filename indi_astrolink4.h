@@ -68,6 +68,7 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
+    std::string doubleToStr(double val);
     bool sensorRead();
     bool setAutoPWM();
     char stopChar { 0xA };	// new line
@@ -117,6 +118,13 @@ private:
     
     ISwitch PowerDefaultOnS[3];
     ISwitchVectorProperty PowerDefaultOnSP;
+    
+    INumber OtherSettingsN[4];
+    INumberVectorProperty OtherSettingsNP;
+    enum
+    {
+            SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
+    }
     
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
