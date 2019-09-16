@@ -68,6 +68,7 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
+    bool sensorRead();
     bool setAutoPWM();
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
