@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright(c) 2019 astrojolo AT astrojolo.com
+ Copyright(c) 2019 astrojolo.com
  .
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
@@ -68,6 +68,8 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     std::vector<std::string> split(const std::string &input, const std::string &regex);
+    std::string doubleToStr(double val);
+    bool sensorRead();
     bool setAutoPWM();
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
@@ -81,8 +83,8 @@ private:
 	ISwitch Power3S[2];
 	ISwitchVectorProperty Power3SP;
     
-	INumber Sensor1N[3];
-	INumberVectorProperty Sensor1NP;
+	INumber Sensor2N[1];
+	INumberVectorProperty Sensor2NP;
     
 	INumber PWMN[2];
 	INumberVectorProperty PWMNP;
@@ -114,10 +116,32 @@ private:
       FS_MODE_UNI, FS_MODE_BI, FS_MODE_MICRO
     };
     
+    ISwitch PowerDefaultOnS[3];
+    ISwitchVectorProperty PowerDefaultOnSP;
+    
+    INumber OtherSettingsN[4];
+    INumberVectorProperty OtherSettingsNP;
+    enum
+    {
+            SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
+    }
+    
+    INumber DCFocTimeN[2];
+    INumberVectorProperty DCFocTimeNP;
+    
+    ISwitch DCFocDirS[2];
+    ISwitchVectorProperty DCFocDirSP;
+    
+    ISwitch DCFocStartS[1];
+    ISwitchVectorProperty DCFocStartSP;
+    
+    ISwitch DCFocAbortS[1];
+    ISwitchVectorProperty DCFocAbortSP;
+    
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
-
+    //static constexpr const char *DCFOCUSER_TAB {"DC Focuser"}
 };
 
 #endif
