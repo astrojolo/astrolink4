@@ -82,8 +82,8 @@ private:
 	ISwitch Power3S[2];
 	ISwitchVectorProperty Power3SP;
     
-	INumber Sensor1N[3];
-	INumberVectorProperty Sensor1NP;
+	INumber Sensor2N[1];
+	INumberVectorProperty Sensor2NP;
     
 	INumber PWMN[2];
 	INumberVectorProperty PWMNP;

@@ -199,6 +199,10 @@ bool IndiAstrolink4::initProperties()
     addParameter("WEATHER_TEMPERATURE", "Temperature (C)", -15, 35, 15);
     addParameter("WEATHER_HUMIDITY", "Humidity %", 0, 100, 15);
     addParameter("WEATHER_DEWPOINT", "Dew Point (C)", 0, 100, 15);
+    
+    // Sensor 2
+    IUFillNumber(&Sensor2N[0], "TEMP_2", "Temp 2", "%.1f", -50, 100, 1, 0);
+    IUFillNumberVector(&Sensor2NP, Sensor2N, 1, getDeviceName(), "SENSOR_2", "Sensor 2", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);
 
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]() { return Handshake();});
@@ -221,7 +225,7 @@ bool IndiAstrolink4::updateProperties()
 		defineSwitch(&Power2SP);
 		defineSwitch(&Power3SP);
         defineSwitch(&AutoPWMSP);
-		defineNumber(&Sensor1NP);
+		defineNumber(&Sensor2NP);
 		defineNumber(&PWMNP);
         defineNumber(&PowerDataNP);
         defineNumber(&FocuserSettingsNP);
@@ -238,7 +242,7 @@ bool IndiAstrolink4::updateProperties()
 		deleteProperty(Power2SP.name);
 		deleteProperty(Power3SP.name);
         deleteProperty(AutoPWMSP.name);
-		deleteProperty(Sensor1NP.name);
+		deleteProperty(Sensor2NP.name);
 		deleteProperty(PWMNP.name);
         deleteProperty(PowerDataNP.name);
         deleteProperty(PowerLabelsTP.name);
@@ -580,12 +584,30 @@ bool IndiAstrolink4::sensorRead()
                 IDSetNumber(&FocusRelPosNP, nullptr);
             }
             
-            setParameterValue("WEATHER_TEMPERATURE", std::stod(result[5]));
-            setParameterValue("WEATHER_HUMIDITY", std::stod(result[6]));
-            setParameterValue("WEATHER_DEWPOINT", std::stod(result[7]));
-            ParametersNP.s = IPS_OK;
-            IDSetNumber(&ParametersNP, nullptr);
-            
+            if(std::stod(result[4]) > 0)
+            {
+                setParameterValue("WEATHER_TEMPERATURE", std::stod(result[5]));
+                setParameterValue("WEATHER_HUMIDITY", std::stod(result[6]));
+                setParameterValue("WEATHER_DEWPOINT", std::stod(result[7]));
+                ParametersNP.s = IPS_OK;
+                IDSetNumber(&ParametersNP, NULL);
+            }
+            else
+            {
+                ParametersNP.s = IPS_IDLE;
+            }
+                
+            if(std::stod(result[8]) > 0)
+            {
+                Sensor2N.value = std::stod(result[9]);
+                Sensor2NP.s = IPS_OK;
+                IDSetNumber(&Sensor2NP, NULL);
+            }
+            else
+            {
+                Sensor2NP.s = IPS_IDLE;
+            }
+                
             float pwmA = std::stod(result[10]);
             float pwmB = std::stod(result[11]);
             if(PWMN[0].value != pwmA || PWMN[1].value != pwmB)
