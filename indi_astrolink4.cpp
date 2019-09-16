@@ -29,7 +29,6 @@
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
 
-#define ASTROLINK4_POLL     2000 // delay for sensors readout
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
 
@@ -93,7 +92,7 @@ bool IndiAstrolink4::Handshake()
         }
         else
         {
-            SetTimer(ASTROLINK4_POLL);
+            SetTimer(POLLMS);
             return true;
         }
     }
@@ -104,7 +103,7 @@ void IndiAstrolink4::TimerHit()
 	if(isConnected())
 	{
         sensorRead();
-		SetTimer(ASTROLINK4_POLL);
+        SetTimer(POLLMS);
     }
 }
 
@@ -127,10 +126,10 @@ bool IndiAstrolink4::initProperties()
     FI::initProperties(FOCUS_TAB);
     WI::initProperties(ENVIRONMENT_TAB, ENVIRONMENT_TAB);
 
-    addAuxControls();
-
-	// addDebugControl();
-	addSimulationControl();
+    addDebugControl();
+    addSimulationControl();
+    addConfigurationControl();
+    addPollPeriodControl();
 
 	// power lines
     IUFillText(&PowerLabelsT[0], "POWER_LABEL_1", "12V out 1", "12V out 1");
@@ -155,7 +154,10 @@ bool IndiAstrolink4::initProperties()
     IUFillNumber(&OtherSettingsN[SET_OVER_TIME], "SET_OVER_TIME", "Protection sensitivity [ms]", "%.0f", 10, 500, 10, 100);
     IUFillNumber(&OtherSettingsN[SET_OVER_VOLT], "SET_OVER_VOLT", "Protection voltage [V]", "%.1f", 10, 14, 0.1, 14);
     IUFillNumber(&OtherSettingsN[SET_OVER_AMP], "SET_OVER_AMP", "Protection current [A]", "%.1f", 1, 10, 0.1, 10);
-    IUFillNumberVector(&OhterSettingsNP, OtherSettingsN, 4, getDeviceName, "OTHER_SETTINGS", "Device settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&OtherSettingsNP, OtherSettingsN, 4, getDeviceName(), "OTHER_SETTINGS", "Device settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+
+    IUFillSwitch(&BuzzerS[0], "BUZZER", "Buzzer", ISS_OFF);
+    IUFillSwitchVector(&BuzzerSP, BuzzerS, 1, getDeviceName(), "BUZZER", "ON/OFF", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
     
     // focuser compensation
     IUFillNumber(&CompensationValueN[0], "COMP_VALUE", "Compensation steps", "%.0f", 0, 10000, 1, 0);
@@ -188,7 +190,7 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&PowerDefaultOnS[0], "POW_DEF_ON1", "DC1", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[1], "POW_DEF_ON2", "DC2", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[2], "POW_DEF_ON3", "DC3", ISS_OFF);
-    IUFillSwitchVector(&PowerDefaultOnSP, PowerDefaultOnS, 3, getDeviceName, "POW_DEF_ON", "Power default ON", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
+    IUFillSwitchVector(&PowerDefaultOnSP, PowerDefaultOnS, 3, getDeviceName(), "POW_DEF_ON", "Power default ON", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
 
 	// pwm
     IUFillNumber(&PWMN[0], "PWM1_VAL", "A", "%3.0f", 0, 100, 10, 0);
@@ -198,7 +200,7 @@ bool IndiAstrolink4::initProperties()
     // Auto pwm
     IUFillSwitch(&AutoPWMS[0], "PWMA_A", "A", ISS_OFF);
     IUFillSwitch(&AutoPWMS[1], "PWMA_B", "B", ISS_OFF);
-    IUFillSwitchVector(&AutoPWMSP, AutoPWMS, 2, getDeviceName(), "AUTO_PWM", "Auto PWM", POWER_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
+    IUFillSwitchVector(&AutoPWMSP, AutoPWMS, 2, getDeviceName(), "AUTO_PWM", "Auto PWM", POWER_TAB, IP_RW, ISR_NOFMANY, 60, IPS_OK);
     
     IUFillNumber(&PowerDataN[0],"VIN", "Input voltage", "%.1f", 0, 15, 10, 0);
     IUFillNumber(&PowerDataN[1],"VREG", "Regulated voltage", "%.1f", 0, 15, 10, 0);
@@ -217,19 +219,16 @@ bool IndiAstrolink4::initProperties()
     IUFillNumberVector(&Sensor2NP, Sensor2N, 1, getDeviceName(), "SENSOR_2", "Sensor 2", ENVIRONMENT_TAB, IP_RO, 60, IPS_IDLE);
     
     // DC focuser
-    IUFillNumber(&DCFocTimeN[0], "DC_FOC_TIME", "Time [ms]", "%.0f", 1, 5000, 100, 100);
-    IUFillNumber(&DCFocTimeN[1], "DC_FOC_PWM", "PWM [%]", "%.0f", 1, 100, 10, 50);
-    IUFillNumberVector(&DCFocTimeNP, DCFocTimeN, 1, getDeviceName(), "DC_FOC_TIME", "DC Focuser", FOCUS_TAB, IP_RW, 60, IPS_OK);
+    IUFillNumber(&DCFocTimeN[0], "DC_FOC_TIME", "Time [ms]", "%.0f", 10, 5000, 10, 500);
+    IUFillNumber(&DCFocTimeN[1], "DC_FOC_PWM", "PWM [%]", "%.0f", 10, 100, 10, 50);
+    IUFillNumberVector(&DCFocTimeNP, DCFocTimeN, 2, getDeviceName(), "DC_FOC_TIME", "DC Focuser", DCFOCUSER_TAB, IP_RW, 60, IPS_OK);
     
     IUFillSwitch(&DCFocDirS[0], "DIR_IN", "IN", ISS_OFF);
     IUFillSwitch(&DCFocDirS[1], "DIR_OUT", "OUT", ISS_ON);
-    IUFillSwitchVector(&DCFocDirSP, DCFocDirS, 2, getDeviceName(), "DC_FOC_DIR", "DC Focuser direction", FOCUS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_OK);
-    
-    IUFillSwitch(&DCFocStartS[0], "DC_FOC_START", "MOVE", ISS_OFF);
-    IUFillSwitchVector(&DCFocStartSP, DCFocStartS, 1, getDeviceName(), "DC_FOC_START", "DC Focuser move", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_OK);
+    IUFillSwitchVector(&DCFocDirSP, DCFocDirS, 2, getDeviceName(), "DC_FOC_DIR", "DC Focuser direction", DCFOCUSER_TAB, IP_RW, ISR_1OFMANY, 60, IPS_OK);
     
     IUFillSwitch(&DCFocAbortS[0], "DC_FOC_ABORT", "STOP", ISS_OFF);
-    IUFillSwitchVector(&DCFocAbortSP, DCFocAbortS, 1, getDeviceName(), "DC_FOC_ABORT", "DC Focuser stop", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
+    IUFillSwitchVector(&DCFocAbortSP, DCFocAbortS, 1, getDeviceName(), "DC_FOC_ABORT", "DC Focuser stop", DCFOCUSER_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]() { return Handshake();});
@@ -248,7 +247,9 @@ bool IndiAstrolink4::updateProperties()
 
     if (isConnected())
     {
-		defineSwitch(&Power1SP);
+        FI::updateProperties();
+        WI::updateProperties();
+        defineSwitch(&Power1SP);
 		defineSwitch(&Power2SP);
 		defineSwitch(&Power3SP);
         defineSwitch(&AutoPWMSP);
@@ -261,13 +262,11 @@ bool IndiAstrolink4::updateProperties()
         defineSwitch(&CompensateNowSP);
         defineSwitch(&PowerDefaultOnSP);
         defineNumber(&OtherSettingsNP);
-        defineNumber(&DCFocTimeNP);
         defineSwitch(&DCFocDirSP);
+        defineNumber(&DCFocTimeNP);
         defineSwitch(&DCFocAbortSP);
-        defineSwitch(&DCFocStartSP);
         defineText(&PowerLabelsTP);
-        FI::updateProperties();
-        WI::updateProperties();
+        defineSwitch(&BuzzerSP);
     }
     else
     {
@@ -288,7 +287,7 @@ bool IndiAstrolink4::updateProperties()
         deleteProperty(DCFocTimeNP.name);
         deleteProperty(DCFocDirSP.name);
         deleteProperty(DCFocAbortSP.name);
-        deleteProperty(DCFocStartSP.name);
+        deleteProperty(BuzzerSP.name);
         FI::updateProperties();
         WI::updateProperties();
     }
@@ -343,12 +342,12 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
                     result[9] = doubleToStr(values[2] * 100);
                     for (const auto &piece : result) concatSettings += ":" + piece;
                     snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    LOG_ERROR(concatSettings.c_str());
                     if(sendCommand(cmd, res))
                     {
                         FocuserSettingsNP.s = IPS_BUSY;
-                        IUUpdateNumber(&FocuserSettingsNP, states, names, n);
+                        IUUpdateNumber(&FocuserSettingsNP, values, names, n);
                         IDSetNumber(&FocuserSettingsNP, NULL);
+                        return true;
                     }
                 }
             }
@@ -359,25 +358,25 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         // Other settings
         if(!strcmp(name, OtherSettingsNP .name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
+            snprintf(cmd, ASTROLINK4_LEN, "%s", "n");
             if(sendCommand(cmd, res))
             {
-                std::string concatSettings = "U";
+                std::string concatSettings = "N";
                 std::vector<std::string> result = split(res, ":");
                 if(result.size() >= 14)
                 {
-                    result[10] = doubleToStr(values[0]);
-                    result[11] = doubleToStr(values[1]);
-                    result[12] = doubleToStr(values[2]);
-                    result[13] = doubleToStr(values[3]);
+                    result[1] = doubleToStr(values[0]);
+                    result[4] = doubleToStr(values[1]);
+                    result[2] = doubleToStr(values[2]);
+                    result[3] = doubleToStr(values[3]);
                     for (const auto &piece : result) concatSettings += ":" + piece;
                     snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    LOG_ERROR(concatSettings.c_str());
                     if(sendCommand(cmd, res))
                     {
                         OtherSettingsNP.s = IPS_BUSY;
                         IUUpdateNumber(&OtherSettingsNP, values, names, n);
                         IDSetNumber(&OtherSettingsNP, NULL);
+                        return true;
                     }
                 }
             }
@@ -390,10 +389,18 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         {
             IUUpdateNumber(&DCFocTimeNP, values, names, n);
             IDSetNumber(&DCFocTimeNP, NULL);
-            DCFocTimeNP.s = IPS_OK;
+            saveConfig(true);
+            sprintf(cmd, "G:%.0f:%.0f:%d", DCFocTimeN[1].value, DCFocTimeN[0].value, (DCFocDirS[0].s == ISS_ON) ? 1 : 0);
+            if(sendCommand(cmd, res))
+            {
+                DCFocAbortSP.s = IPS_OK;
+                DCFocTimeNP.s = IPS_BUSY;
+                return true;
+            }
+            DCFocTimeNP.s = IPS_ALERT;
             return true;
         }
-        
+
         if (strstr(name, "FOCUS_"))
             return FI::processNumber(dev, name, values, names, n);
         if (strstr(name, "WEATHER_"))
@@ -493,23 +500,9 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             return true;
         }
         
-        if (!strcmp(name, DCFocStartSP.name))
-        {
-            sprintf(cmd, ASTROLINK4_LEN, "G:%.0f:%.0f:%.0f", DCFocTimeN[0].value, DCFocTimeN[1].value, (DCFocDirS[0].s == ISS_ON) ? 1 : 0);
-            if(sendCommand(cmd, res))
-            {
-                DCFocStartSP.s = IPS_BUSY;
-                DCFocAbortSP.s = IPS_OK;
-                IUUpdateSwitch(&DCFocStartSP, states, names, n);
-                IDSetSwitch(&DCFocStartSP, nullptr);
-            }
-            DCFocStartSP.s = IPS_ALERT;
-            return true;
-        }
-        
         if (!strcmp(name, DCFocAbortSP.name))
         {
-            sprintf(cmd, ASTROLINK4_LEN, "%s", "K");
+            sprintf(cmd, "%s", "K");
             if(sendCommand(cmd, res))
             {
                 DCFocAbortSP.s = IPS_BUSY;
@@ -530,12 +523,11 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
                 std::vector<std::string> result = split(res, ":");
                 if(result.size() >= 15)
                 {
-                    result[13] = (states[0] == ISS_ON) ? "1" : "0";
-                    result[14] = (states[1] == ISS_ON) ? "1" : "0";
-                    result[15] = (states[2] == ISS_ON) ? "1" : "0";
+                    result[14] = (states[0] == ISS_ON) ? "1" : "0";
+                    result[15] = (states[1] == ISS_ON) ? "1" : "0";
+                    result[16] = (states[2] == ISS_ON) ? "1" : "0";
                     for (const auto &piece : result) concatSettings += ":" + piece;
                     snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    LOG_ERROR(concatSettings.c_str());
                     if(sendCommand(cmd, res))
                     {
                         PowerDefaultOnSP.s = IPS_BUSY;
@@ -546,6 +538,32 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
                 }
             }
             PowerDefaultOnSP.s = IPS_ALERT;
+            return true;
+        }
+
+        // Buzzer
+        if(!strcmp(name, BuzzerSP.name))
+        {
+            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
+            if(sendCommand(cmd, res))
+            {
+                std::string concatSettings = "U";
+                std::vector<std::string> result = split(res, ":");
+                if(result.size() >= 15)
+                {
+                    result[11] = (states[0] == ISS_ON) ? "1" : "0";
+                    for (const auto &piece : result) concatSettings += ":" + piece;
+                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
+                    if(sendCommand(cmd, res))
+                    {
+                        BuzzerSP.s = IPS_BUSY;
+                        IUUpdateSwitch(&BuzzerSP, states, names, n);
+                        IDSetSwitch(&BuzzerSP, NULL);
+                        return true;
+                    }
+                }
+            }
+            BuzzerSP.s = IPS_ALERT;
             return true;
         }
         
@@ -559,12 +577,11 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
                 std::vector<std::string> result = split(res, ":");
                 if(result.size() >= 5)
                 {
-                    if(states[0] == ISS_ON) result[7] = "1";
-                    if(states[1] == ISS_ON) result[7] = "2";
-                    if(states[2] == ISS_ON) result[7] = "3";
+                    if(states[0] == ISS_ON) result[7] = "0";
+                    if(states[1] == ISS_ON) result[7] = "1";
+                    if(states[2] == ISS_ON) result[7] = "2";
                     for (const auto &piece : result) concatSettings += ":" + piece;
                     snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    LOG_ERROR(concatSettings.c_str());
                     if(sendCommand(cmd, res))
                     {
                         FocuserModeSP.s = IPS_BUSY;
@@ -596,7 +613,7 @@ bool IndiAstrolink4::ISNewText(const char * dev, const char * name, char * texts
             IUUpdateText(&PowerLabelsTP, texts, names, n);
             PowerLabelsTP.s = IPS_OK;
             LOG_INFO("Power port labels saved. Driver must be restarted for the labels to take effect.");
-            saveConfig();
+            saveConfig(true);
             IDSetText(&PowerLabelsTP, nullptr);
             return true;
         }
@@ -611,6 +628,8 @@ bool IndiAstrolink4::saveConfigItems(FILE *fp)
     FI::saveConfigItems(fp);
     
     IUSaveConfigText(fp, &PowerLabelsTP);
+    IUSaveConfigNumber(fp, &DCFocTimeNP);
+    IUSaveConfigSwitch(fp, &DCFocDirSP);
     return true;
 }
 
@@ -639,8 +658,24 @@ bool IndiAstrolink4::setAutoPWM()
 IPState IndiAstrolink4::MoveAbsFocuser(uint32_t targetTicks)
 {
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks);
-    lastMoveDirection = (FocusAbsPosN[0].value > targetTicks)? FOCUS_INWARD : FOCUS_OUTWARD;
+    int32_t backlash = 0;
+    if(backlashEnabled)
+    {
+        if(applyBacklash)
+        {
+            applyBacklash = false;
+        }
+        else
+        {
+            FocusDirection currentMoveDirection = (FocusAbsPosN[0].value > targetTicks) ? FOCUS_INWARD : FOCUS_OUTWARD;
+            FocusDirection applyBacklashDirection = (backlashSteps > 0) ? FOCUS_OUTWARD : FOCUS_INWARD;
+            if(currentMoveDirection == applyBacklashDirection) backlash = backlashSteps;
+            if((targetTicks + backlash) < 0 || (targetTicks + backlash) > FocusMaxPosN[0].value) backlash = 0;
+            applyBacklash = (backlash > 0);
+        }
+    }
+
+    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks + backlash);
     return (sendCommand(cmd, res)) ? IPS_BUSY : IPS_ALERT;
 }
 
@@ -668,7 +703,6 @@ bool IndiAstrolink4::ReverseFocuser(bool enabled)
             result[6] = enabled ? "1" : "0";
             for (const auto &piece : result) concatSettings += ":" + piece;
             snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-            LOG_ERROR(concatSettings.c_str());
             if(sendCommand(cmd, res)) return true;
         }
     }
@@ -704,17 +738,21 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
     if(isSimulation())
     {
         if(strcmp(cmd, "#") == 0) sprintf(res, "%s\n", "#:AstroLink4mini");
-        if(strcmp(cmd, "q") == 0) sprintf(res, "%s\n", "q:1234:0:1.47:1:2.12:45.1:-12.81:0:0:45:0:0:0:1:12.1:5.0:1.12:13.41:0:34:0:0");
+        if(strcmp(cmd, "q") == 0) sprintf(res, "%s\n", "q:1234:0:1.47:1:2.12:45.1:-12.81:1:-25.22:45:0:0:0:1:12.1:5.0:1.12:13.41:0:34:0:0");
         if(strcmp(cmd, "p") == 0) sprintf(res, "%s\n", "p:1234");
         if(strcmp(cmd, "i") == 0) sprintf(res, "%s\n", "i:0");
+        if(strcmp(cmd, "n") == 0) sprintf(res, "%s\n", "n:1077:14.0:10.0:100");
         if(strncmp(cmd, "R", 1) == 0) sprintf(res, "%s\n", "R:");
         if(strncmp(cmd, "C", 1) == 0) sprintf(res, "%s\n", "C:");
         if(strncmp(cmd, "B", 1) == 0) sprintf(res, "%s\n", "B:");
         if(strncmp(cmd, "H", 1) == 0) sprintf(res, "%s\n", "H:");
         if(strncmp(cmd, "P", 1) == 0) sprintf(res, "%s\n", "P:");
-        if(strncmp(cmd, "u", 1) == 0) sprintf(res, "%s\n", "u:25000:220:0:100:440:0:2:1:257:0:0:0:0:0:1:0:0");
+        if(strncmp(cmd, "u", 1) == 0) sprintf(res, "%s\n", "u:25000:220:0:100:440:0:0:1:257:0:0:0:0:0:1:0:0");
         if(strncmp(cmd, "U", 1) == 0) sprintf(res, "%s\n", "U:");
         if(strncmp(cmd, "S", 1) == 0) sprintf(res, "%s\n", "S:");
+        if(strncmp(cmd, "G", 1) == 0) sprintf(res, "%s\n", "G:");
+        if(strncmp(cmd, "K", 1) == 0) sprintf(res, "%s\n", "K:");
+        if(strncmp(cmd, "N", 1) == 0) sprintf(res, "%s\n", "N:");
     }
     else
     {
@@ -768,21 +806,21 @@ bool IndiAstrolink4::sensorRead()
         {
             float focuserPosition = std::stod(result[1]);
             float stepsToGo = std::stod(result[2]);
-            if((FocusAbsPosN[0].value != focuserPosition) && (stepsToGo > 0))
+            if(FocusAbsPosN[0].value != focuserPosition)
             {
                 FocusAbsPosN[0].value = focuserPosition;
-                if(stepsToGo > 0)
+                if(FocusAbsPosNP.s == IPS_BUSY)
                 {
-                    FocusAbsPosNP.s = FocusRelPosNP.s = IPS_BUSY;
+                    if(stepsToGo <= 0)
+                    {
+                        FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
+                        if(applyBacklash) MoveAbsFocuser(focuserPosition - backlashSteps);
+                    }
                 }
-                else
-                {
-                    FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
-                }
-                IDSetNumber(&FocusAbsPosNP, nullptr);
                 IDSetNumber(&FocusRelPosNP, nullptr);
+                IDSetNumber(&FocusAbsPosNP, nullptr);
             }
-            
+
             if(std::stod(result[4]) > 0)
             {
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[5]));
@@ -798,7 +836,7 @@ bool IndiAstrolink4::sensorRead()
                 
             if(std::stod(result[8]) > 0)
             {
-                Sensor2N.value = std::stod(result[9]);
+                Sensor2N[0].value = std::stod(result[9]);
                 Sensor2NP.s = IPS_OK;
                 IDSetNumber(&Sensor2NP, NULL);
             }
@@ -820,14 +858,14 @@ bool IndiAstrolink4::sensorRead()
             bool dcMotorMoving = (std::stod(result[19]) > 0);
             if(dcMotorMoving)
             {
-                DCFocStartSP.s = IPS_BUSY;
-                IDSetSwitch(&DCFocStartSP, NULL);
+                DCFocTimeNP.s = IPS_BUSY;
+                IDSetNumber(&DCFocTimeNP, NULL);
             }
-            else if (DCFocStartSP.s == IPS_BUSY)
+            else if (DCFocTimeNP.s == IPS_BUSY)
             {
-                DCFocStartSP.s = IPS_OK;
+                DCFocTimeNP.s = IPS_OK;
                 DCFocAbortSP.s = IPS_IDLE;
-                IDSetSwitch(&DCFocStartSP, NULL);
+                IDSetNumber(&DCFocTimeNP, NULL);
                 IDSetSwitch(&DCFocAbortSP, NULL);
             }
             
@@ -837,11 +875,11 @@ bool IndiAstrolink4::sensorRead()
             if(Power1S[0].s != power1 || Power2S[0].s != power2 || Power3S[0].s != power3)
             {
                 Power1S[0].s = (power1 == ISS_ON) ? ISS_ON : ISS_OFF;
-                Power1S[1].s = (power1 == ISS_OFF) > 0) ? ISS_ON : ISS_OFF;
+                Power1S[1].s = (power1 == ISS_OFF) ? ISS_ON : ISS_OFF;
                 Power1SP.s = IPS_OK;
                 IDSetSwitch(&Power1SP, NULL);
                 Power2S[0].s = (power2 == ISS_ON) ? ISS_ON : ISS_OFF;
-                Power2S[1].s = (power2 == ISS_OFF) > 0) ? ISS_ON : ISS_OFF;
+                Power2S[1].s = (power2 == ISS_OFF) ? ISS_ON : ISS_OFF;
                 Power2SP.s = IPS_OK;
                 IDSetSwitch(&Power2SP, NULL);
                 Power3S[0].s = (power3 == ISS_ON) ? ISS_ON : ISS_OFF;
@@ -872,21 +910,22 @@ bool IndiAstrolink4::sensorRead()
     }
     
     // update settings data if was changed
-    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP != IPS_OK || PowerDefaultOnSP.s != IPS_OK || OtherSettingsNP.s != IPS_OK)
+    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || PowerDefaultOnSP.s != IPS_OK || BuzzerSP.s != IPS_OK)
     {
         if (sendCommand("u", res))
         {
             std::vector<std::string> result = split(res, ":");
             
-            if(!strcmp("1", result[7].c_str())) FocuserModeS[FS_MODE_UNI].s = ISS_ON;
-            if(!strcmp("2", result[7].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
-            if(!strcmp("3", result[7].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
+            FocuserModeS[FS_MODE_UNI].s = FocuserModeS[FS_MODE_BI].s = FocuserModeS[FS_MODE_MICRO].s = ISS_OFF;
+            if(!strcmp("0", result[7].c_str())) FocuserModeS[FS_MODE_UNI].s = ISS_ON;
+            if(!strcmp("1", result[7].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
+            if(!strcmp("2", result[7].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
             FocuserModeSP.s = IPS_OK;
             IDSetSwitch(&FocuserModeSP, NULL);
             
-            PowerDefaultOnS[0].s = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
-            PowerDefaultOnS[1].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
-            PowerDefaultOnS[2].s = (std::stod(result[15]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[0].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[1].s = (std::stod(result[15]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[2].s = (std::stod(result[16]) > 0) ? ISS_ON : ISS_OFF;
             PowerDefaultOnSP.s = IPS_OK;
             IDSetSwitch(&PowerDefaultOnSP, NULL);
             
@@ -894,15 +933,24 @@ bool IndiAstrolink4::sensorRead()
             FocuserSettingsN[FS_SPEED].value = std::stod(result[2]);
             FocuserSettingsN[FS_STEP_SIZE].value = std::stod(result[9]) / 100.0;
             FocuserSettingsNP.s = IPS_OK;
-            IDSetNumber(&FocuserSettingsNP, NULL);
-            
-            OtherSettingsN[SET_AREF_COEFF].value = std:stod(result[10]);
-            OtherSettingsN[SET_OVER_TIME].value = std:stod(result[11]);
-            OtherSettingsN[SET_OVER_VOLT].value = std:stod(result[12]);
-            OtherSettingsN[SET_OVER_AMP].value = std:stod(result[13]);
+            IDSetNumber(&FocuserSettingsNP, NULL);        
+
+            BuzzerS[0].s = (std::stod(result[11]) > 0) ? ISS_ON : ISS_OFF;
+            BuzzerSP.s = IPS_OK;
+            IDSetSwitch(&BuzzerSP, NULL);
+        }
+    }
+    if(OtherSettingsNP.s != IPS_OK)
+    {
+        if (sendCommand("n", res))
+        {
+            std::vector<std::string> result = split(res, ":");
+            OtherSettingsN[SET_AREF_COEFF].value = std::stod(result[1]) / 1000.0;
+            OtherSettingsN[SET_OVER_TIME].value = std::stod(result[4]);
+            OtherSettingsN[SET_OVER_VOLT].value = std::stod(result[2]);
+            OtherSettingsN[SET_OVER_AMP].value = std::stod(result[3]);
             OtherSettingsNP.s = IPS_OK;
             IDSetNumber(&OtherSettingsNP, NULL);
-            
         }
     }
     
@@ -949,8 +997,8 @@ std::vector<std::string> IndiAstrolink4::split(const std::string &input, const s
 
 std::string IndiAstrolink4::doubleToStr(double val)
 {
-    char * buf[10];
+    char buf[10];
     sprintf(buf, "%.f0", val);
-    std:string ret(1, buf);
+    std::string ret(buf);
     return ret;
 }

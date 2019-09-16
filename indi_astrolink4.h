@@ -74,6 +74,7 @@ private:
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
     int32_t backlashSteps = 0;
+    bool applyBacklash = false;
     FocusDirection lastMoveDirection = FOCUS_INWARD;
     
 	ISwitch Power1S[2];
@@ -124,24 +125,24 @@ private:
     enum
     {
             SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
-    }
+    };
     
     INumber DCFocTimeN[2];
     INumberVectorProperty DCFocTimeNP;
     
     ISwitch DCFocDirS[2];
     ISwitchVectorProperty DCFocDirSP;
-    
-    ISwitch DCFocStartS[1];
-    ISwitchVectorProperty DCFocStartSP;
-    
+
     ISwitch DCFocAbortS[1];
     ISwitchVectorProperty DCFocAbortSP;
+
+    ISwitch BuzzerS[0];
+    ISwitchVectorProperty BuzzerSP;
     
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
-    //static constexpr const char *DCFOCUSER_TAB {"DC Focuser"}
+    static constexpr const char *DCFOCUSER_TAB {"DC Focuser"};
 };
 
 #endif
