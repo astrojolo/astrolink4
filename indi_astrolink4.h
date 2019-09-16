@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright(c) 2019 astrojolo AT astrojolo.com
+ Copyright(c) 2019 astrojolo.com
  .
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
@@ -126,10 +126,22 @@ private:
             SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
     }
     
+    INumber DCFocTimeN[2];
+    INumberVectorProperty DCFocTimeNP;
+    
+    ISwitch DCFocDirS[2];
+    ISwitchVectorProperty DCFocDirSP;
+    
+    ISwitch DCFocStartS[1];
+    ISwitchVectorProperty DCFocStartSP;
+    
+    ISwitch DCFocAbortS[1];
+    ISwitchVectorProperty DCFocAbortSP;
+    
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
-
+    //static constexpr const char *DCFOCUSER_TAB {"DC Focuser"}
 };
 
 #endif
