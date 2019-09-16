@@ -158,6 +158,7 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&CompensateNowS[0], "COMP_NOW", "Compensate now", ISS_OFF);
     IUFillSwitchVector(&CompensateNowSP, CompensateNowS, 1, getDeviceName(), "COMP_NOW", "Compensate now", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
     
+    // power lines
     char portLabel[MAXINDILABEL];
     
     memset(portLabel, 0, MAXINDILABEL);
@@ -177,6 +178,11 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&Power3S[0], "PWR3BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
     IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "12V out 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    
+    IUFillSwitch(&PowerDefaultOnS[0], "POW_DEF_ON1", "DC1", ISS_OFF);
+    IUFillSwitch(&PowerDefaultOnS[1], "POW_DEF_ON2", "DC2", ISS_OFF);
+    IUFillSwitch(&PowerDefaultOnS[2], "POW_DEF_ON3", "DC3", ISS_OFF);
+    IUFillSwitchVector(&PowerDefaultOnSP, PowerDefaultOnS, 3, getDeviceName, "POW_DEF_ON", "Power default ON", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
 
 	// pwm
     IUFillNumber(&PWMN[0], "PWM1_VAL", "A", "%3.0f", 0, 100, 10, 0);
@@ -193,7 +199,7 @@ bool IndiAstrolink4::initProperties()
     IUFillNumber(&PowerDataN[2],"ITOT", "Total current", "%.1f", 0, 15, 10, 0);
     IUFillNumber(&PowerDataN[3],"AH", "Energy consumed [Ah]", "%.1f", 0, 1000, 10, 0);
     IUFillNumber(&PowerDataN[4],"WH", "Energy consumed [Wh]", "%.1f", 0, 10000, 10, 0);
-    IUFillNumberVector(&PowerDataNP, PowerDataN, 5, getDeviceName(), "POWER_DATA", "Power data", POWER_TAB, IP_RO, 60, IPS_OK);
+    IUFillNumberVector(&PowerDataNP, PowerDataN, 5, getDeviceName(), "POWER_DATA", "Power data", POWER_TAB, IP_RO, 60, IPS_IDLE);
     
     // Environment Group
     addParameter("WEATHER_TEMPERATURE", "Temperature (C)", -15, 35, 15);
@@ -201,8 +207,8 @@ bool IndiAstrolink4::initProperties()
     addParameter("WEATHER_DEWPOINT", "Dew Point (C)", 0, 100, 15);
     
     // Sensor 2
-    IUFillNumber(&Sensor2N[0], "TEMP_2", "Temp 2", "%.1f", -50, 100, 1, 0);
-    IUFillNumberVector(&Sensor2NP, Sensor2N, 1, getDeviceName(), "SENSOR_2", "Sensor 2", ENVIRONMENT_TAB, IP_RO, 60, IPS_OK);
+    IUFillNumber(&Sensor2N[0], "TEMP_2", "Temperature (C)", "%.1f", -50, 100, 1, 0);
+    IUFillNumberVector(&Sensor2NP, Sensor2N, 1, getDeviceName(), "SENSOR_2", "Sensor 2", ENVIRONMENT_TAB, IP_RO, 60, IPS_IDLE);
 
     serialConnection = new Connection::Serial(this);
     serialConnection->registerHandshake([&]() { return Handshake();});
@@ -232,6 +238,7 @@ bool IndiAstrolink4::updateProperties()
         defineSwitch(&FocuserModeSP);
         defineNumber(&CompensationValueNP);
         defineSwitch(&CompensateNowSP);
+        defineSwitch(&PowerDefaultOnSP);
         defineText(&PowerLabelsTP);
         FI::updateProperties();
         WI::updateProperties();
@@ -250,6 +257,7 @@ bool IndiAstrolink4::updateProperties()
         deleteProperty(FocuserModeSP.name);
         deleteProperty(CompensateNowSP.name);
         deleteProperty(CompensationValueNP.name);
+        deleteProperty(PowerDefaultOnSP.name);
         FI::updateProperties();
         WI::updateProperties();
     }
@@ -376,6 +384,33 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
                 AutoPWMSP.s = IPS_ALERT;
             }
             IDSetSwitch(&AutoPWMSP, nullptr);
+            return true;
+        }
+        
+        // Power default on
+        if(!strcmp(name, PowerDefaultOnSP.name))
+        {
+            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
+            if(sendCommand(cmd, res))
+            {
+                std::string concatSettings = "U";
+                std::vector<std::string> result = split(res, ":");
+                if(result.size() >= 15)
+                {
+                    result[13] = (states[0] == ISS_ON) ? "1" : "0";
+                    result[14] = (states[1] == ISS_ON) ? "1" : "0";
+                    result[15] = (states[2] == ISS_ON) ? "1" : "0";
+                    for (const auto &piece : result) concatSettings += ":" + piece;
+                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
+                    LOG_ERROR(concatSettings.c_str());
+                    if(sendCommand(cmd, res))
+                    {
+                        PowerDefaultOnSP.s = IPS_OK;
+                        IDSetSwitch(&PowerDefaultOnSP, NULL);
+                    }
+                }
+            }
+            PowerDefaultOnSP.s = IPS_ALERT;
             return true;
         }
 
@@ -664,17 +699,24 @@ bool IndiAstrolink4::sensorRead()
         {
             std::vector<std::string> result = split(res, ":");
             
+            if(!strcmp("1", result[7].c_str())) FocuserModeS[FS_MODE_UNI].s = ISS_ON;
+            if(!strcmp("2", result[7].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
+            if(!strcmp("3", result[7].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
+            FocuserModeSP.s = IPS_OK;
+            IDSetSwitch(&FocuserModeSP, NULL);
+            
+            PowerDefaultOnS[0].s = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[1].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[2].s = (std::stod(result[15]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnSP.s = IPS_OK;
+            IDSetSwitch(&PowerDefaultOnSP, NULL);
+            
             FocuserSettingsN[FS_MAX_POS].value = std::stod(result[1]);
             FocuserSettingsN[FS_SPEED].value = std::stod(result[2]);
             FocuserSettingsN[FS_STEP_SIZE].value = std::stod(result[9]) / 100.0;
             FocuserSettingsNP.s = IPS_OK;
             IDSetNumber(&FocuserSettingsNP, NULL);
             
-            if(!strcmp("1", result[7].c_str())) FocuserModeS[FS_MODE_UNI].s = ISS_ON;
-            if(!strcmp("2", result[7].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
-            if(!strcmp("3", result[7].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
-            FocuserModeSP.s = IPS_OK;
-            IDSetSwitch(&FocuserModeSP, NULL);
         }
     }
     

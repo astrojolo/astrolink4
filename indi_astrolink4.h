@@ -115,6 +115,9 @@ private:
       FS_MODE_UNI, FS_MODE_BI, FS_MODE_MICRO
     };
     
+    ISwitch PowerDefaultOnS[3];
+    ISwitchVectorProperty PowerDefaultOnSP;
+    
 	static constexpr const char *POWER_TAB {"Power"};
 	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
