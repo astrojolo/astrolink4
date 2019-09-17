@@ -82,6 +82,8 @@ const char * IndiAstrolink4::getDefaultName()
 //////////////////////////////////////////////////////////////////////
 bool IndiAstrolink4::Handshake()
 {
+    PortFD = serialConnection->getPortFD();
+
     char res[ASTROLINK4_LEN] = {0};
     if(sendCommand("#", res))
     {
@@ -96,6 +98,7 @@ bool IndiAstrolink4::Handshake()
             return true;
         }
     }
+    return false;
 }
 
 void IndiAstrolink4::TimerHit()
@@ -231,10 +234,13 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitchVector(&DCFocAbortSP, DCFocAbortS, 1, getDeviceName(), "DC_FOC_ABORT", "DC Focuser stop", DCFOCUSER_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
     serialConnection = new Connection::Serial(this);
-    serialConnection->registerHandshake([&]() { return Handshake();});
-	registerConnection(serialConnection);
+    serialConnection->registerHandshake([&]()
+    {
+        return Handshake();
+    });
+    registerConnection(serialConnection);
 
-	serialConnection->setDefaultPort("/dev/ttyUSB0");
+    serialConnection->setDefaultPort("/dev/ttyUSB0");
     serialConnection->setDefaultBaudRate(serialConnection->B_115200);
 
     return true;
@@ -421,7 +427,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // handle power line 1
 		if (!strcmp(name, Power1SP.name))
 		{
-            sprintf(cmd, "C:0:%s", (Power1S[0].s == ISS_ON) ? "1" : "0");
+            sprintf(cmd, "C:0:%s", (strcmp(Power1S[0].name, names[0])) ? "0" : "1");
             bool allOk = sendCommand(cmd, res);
             Power1SP.s = allOk ? IPS_BUSY : IPS_ALERT;
             if(allOk)
@@ -434,7 +440,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // handle power line 2
         if (!strcmp(name, Power2SP.name))
         {
-            sprintf(cmd, "C:1:%s", (Power2S[0].s == ISS_ON) ? "1" : "0");
+            sprintf(cmd, "C:1:%s", (strcmp(Power2S[0].name, names[0])) ? "0" : "1");
             bool allOk = sendCommand(cmd, res);
             Power2SP.s = allOk ? IPS_BUSY : IPS_ALERT;
             if(allOk)
@@ -447,7 +453,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // handle power line 3
         if (!strcmp(name, Power3SP.name))
         {
-            sprintf(cmd, "C:2:%s", (Power3S[0].s == ISS_ON) ? "1" : "0");
+            sprintf(cmd, "C:2:%s", (strcmp(Power3S[0].name, names[0])) ? "0" : "1");
             bool allOk = sendCommand(cmd, res);
             Power3SP.s = allOk ? IPS_BUSY : IPS_ALERT;
             if(allOk)
@@ -658,24 +664,7 @@ bool IndiAstrolink4::setAutoPWM()
 IPState IndiAstrolink4::MoveAbsFocuser(uint32_t targetTicks)
 {
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    int32_t backlash = 0;
-    if(backlashEnabled)
-    {
-        if(applyBacklash)
-        {
-            applyBacklash = false;
-        }
-        else
-        {
-            FocusDirection currentMoveDirection = (FocusAbsPosN[0].value > targetTicks) ? FOCUS_INWARD : FOCUS_OUTWARD;
-            FocusDirection applyBacklashDirection = (backlashSteps > 0) ? FOCUS_OUTWARD : FOCUS_INWARD;
-            if(currentMoveDirection == applyBacklashDirection) backlash = backlashSteps;
-            if((targetTicks + backlash) < 0 || (targetTicks + backlash) > FocusMaxPosN[0].value) backlash = 0;
-            applyBacklash = (backlash > 0);
-        }
-    }
-
-    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks + backlash);
+    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks);
     return (sendCommand(cmd, res)) ? IPS_BUSY : IPS_ALERT;
 }
 
@@ -730,6 +719,10 @@ bool IndiAstrolink4::SetFocuserBacklashEnabled(bool enabled)
 //////////////////////////////////////////////////////////////////////
 /// Serial commands
 //////////////////////////////////////////////////////////////////////
+///
+/// q:1000:0:0.06:0: NAN:NAN:0.00:0:0.00:0:0:0:0:0:12.7:5.0:0.00:0.01:0:0:0:0
+/// u:100000:250:0:100:400:0:0:0:500:3:1:1:0:0:0:0:0:2148:443:
+/// n:1071:140:100:100:
 bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 {
     int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
@@ -790,6 +783,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 //////////////////////////////////////////////////////////////////////
 bool IndiAstrolink4::sensorRead()
 {
+    // q:1000:0:0.06:0: NAN:NAN:0.00:0:0.00:0:0:0:0:0:12.7:5.0:0.00:0.01:0:0:0:0
     // raw data from serial:
     // q:<stepper position>:<distance to go>:<current>:
     // <sensor 1 type>:<sensor 1 temp>:<sensor 1 humidity>:<dewpoint>:<sensor 2 type>:<sensor 2 temp>:
@@ -805,21 +799,14 @@ bool IndiAstrolink4::sensorRead()
         if(result.size() > 4)
         {
             float focuserPosition = std::stod(result[1]);
+            FocusAbsPosN[0].value = focuserPosition;
             float stepsToGo = std::stod(result[2]);
-            if(FocusAbsPosN[0].value != focuserPosition)
+            if(stepsToGo <= 0)
             {
-                FocusAbsPosN[0].value = focuserPosition;
-                if(FocusAbsPosNP.s == IPS_BUSY)
-                {
-                    if(stepsToGo <= 0)
-                    {
-                        FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
-                        if(applyBacklash) MoveAbsFocuser(focuserPosition - backlashSteps);
-                    }
-                }
+                FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
                 IDSetNumber(&FocusRelPosNP, nullptr);
-                IDSetNumber(&FocusAbsPosNP, nullptr);
             }
+            IDSetNumber(&FocusAbsPosNP, nullptr);
 
             if(std::stod(result[4]) > 0)
             {
@@ -872,7 +859,7 @@ bool IndiAstrolink4::sensorRead()
             ISState power1 = (std::stod(result[12]) > 0) ? ISS_ON : ISS_OFF;
             ISState power2 = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
             ISState power3 = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
-            if(Power1S[0].s != power1 || Power2S[0].s != power2 || Power3S[0].s != power3)
+            if(Power1SP.s != IPS_OK || Power2SP.s != IPS_OK || Power3SP.s != IPS_OK)
             {
                 Power1S[0].s = (power1 == ISS_ON) ? ISS_ON : ISS_OFF;
                 Power1S[1].s = (power1 == ISS_OFF) ? ISS_ON : ISS_OFF;
