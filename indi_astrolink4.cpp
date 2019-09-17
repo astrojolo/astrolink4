@@ -657,25 +657,20 @@ bool IndiAstrolink4::setAutoPWM()
 //////////////////////////////////////////////////////////////////////
 IPState IndiAstrolink4::MoveAbsFocuser(uint32_t targetTicks)
 {
+    uint32_t newPos = targetTicks;
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    int32_t backlash = 0;
     if(backlashEnabled)
     {
-        if(applyBacklash)
+        if((targetTicks > FocuserAbsPosN[0].value) == (backlashSteps > 0))
         {
-            applyBacklash = false;
-        }
-        else
-        {
-            FocusDirection currentMoveDirection = (FocusAbsPosN[0].value > targetTicks) ? FOCUS_INWARD : FOCUS_OUTWARD;
-            FocusDirection applyBacklashDirection = (backlashSteps > 0) ? FOCUS_OUTWARD : FOCUS_INWARD;
-            if(currentMoveDirection == applyBacklashDirection) backlash = backlashSteps;
-            if((targetTicks + backlash) < 0 || (targetTicks + backlash) > FocusMaxPosN[0].value) backlash = 0;
-            applyBacklash = (backlash > 0);
+            if((newPos + backlashSteps) >= 0 && (newPos + backlashSteps) <= FocusMaxPosN[0].value))
+            {
+                newPos += backlashSteps;
+                requireBacklashReturn = true;
+            }
         }
     }
-
-    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks + backlash);
+    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", newPos);
     return (sendCommand(cmd, res)) ? IPS_BUSY : IPS_ALERT;
 }
 
@@ -813,8 +808,15 @@ bool IndiAstrolink4::sensorRead()
                 {
                     if(stepsToGo <= 0)
                     {
-                        FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
-                        if(applyBacklash) MoveAbsFocuser(focuserPosition - backlashSteps);
+                        if(requireBacklashReturn)
+                        {
+                            requireBacklashReturn = false;
+                            MoveAbsFocuser(focuserPosition - backlashSteps);
+                        }
+                        else
+                        {
+                            FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
+                        }
                     }
                 }
                 IDSetNumber(&FocusRelPosNP, nullptr);

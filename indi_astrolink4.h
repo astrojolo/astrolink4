@@ -71,11 +71,11 @@ private:
     std::string doubleToStr(double val);
     bool sensorRead();
     bool setAutoPWM();
+    int32_t calculateBacklash(uint32_t targetTicks)
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
     int32_t backlashSteps = 0;
-    bool applyBacklash = false;
-    FocusDirection lastMoveDirection = FOCUS_INWARD;
+    bool requireBacklashReturn = false;
     
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
