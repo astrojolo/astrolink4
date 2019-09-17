@@ -315,15 +315,19 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
             bool allOk = true;
             if(PWMN[0].value != values[0])
             {
-                sprintf(cmd, "B:0:%d", static_cast<uint8_t>(values[0]));
-                AutoPWMS[0].s = ISS_OFF;
-                allOk = allOk && sendCommand(cmd, res);
+                if(AutoPWMS[0].s == ISS_OFF)
+                {
+                    sprintf(cmd, "B:0:%d", static_cast<uint8_t>(values[0]));
+                    allOk = allOk && sendCommand(cmd, res);
+                }
             }
             if(PWMN[1].value != values[1])
             {
-                sprintf(cmd, "B:1:%d", static_cast<uint8_t>(values[1]));
-                AutoPWMS[1].s = ISS_OFF;
-                allOk = allOk && sendCommand(cmd, res);
+                if(AutoPWMS[1].s == ISS_OFF)
+                {
+                    sprintf(cmd, "B:1:%d", static_cast<uint8_t>(values[1]));
+                    allOk = allOk && sendCommand(cmd, res);
+                }
             }
             PWMNP.s = (allOk) ? IPS_BUSY : IPS_ALERT;
             if(allOk)
@@ -834,13 +838,10 @@ bool IndiAstrolink4::sensorRead()
                 
             float pwmA = std::stod(result[10]);
             float pwmB = std::stod(result[11]);
-            if(PWMN[0].value != pwmA || PWMN[1].value != pwmB)
-            {
-                PWMN[0].value = pwmA;
-                PWMN[1].value = pwmB;
-                PWMNP.s=IPS_OK;
-                IDSetNumber(&PWMNP, NULL);
-            }
+            PWMN[0].value = pwmA;
+            PWMN[1].value = pwmB;
+            PWMNP.s = IPS_OK;
+            IDSetNumber(&PWMNP, NULL);
             
             bool dcMotorMoving = (std::stod(result[19]) > 0);
             if(dcMotorMoving)
