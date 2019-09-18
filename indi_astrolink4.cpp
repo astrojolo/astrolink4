@@ -19,13 +19,6 @@
 
 #include "indicom.h"
 
-#include <unistd.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <memory>
-#include <regex>
-#include <cstring>
-
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 6
 
@@ -346,27 +339,17 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         // Focuser settings
         if(!strcmp(name, FocuserSettingsNP .name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
-            if(sendCommand(cmd, res))
-            {
-                std::string concatSettings = "U";
-                std::vector<std::string> result = split(res, ":");
-                if(result.size() >= 10)
-                {
-                    result[1] = doubleToStr(values[0]);
-                    result[2] = doubleToStr(values[1]);
-                    result[9] = doubleToStr(values[2] * 100);
-                    for (const auto &piece : result) concatSettings += ":" + piece;
-                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    if(sendCommand(cmd, res))
-                    {
-                        FocuserSettingsNP.s = IPS_BUSY;
-                        IUUpdateNumber(&FocuserSettingsNP, values, names, n);
-                        IDSetNumber(&FocuserSettingsNP, NULL);
-                        return true;
-                    }
-                }
-            }
+        	std::map<int, std::string> updates;
+        	updates[1] = doubleToStr(values[0]);
+        	updates[2] = doubleToStr(values[1]);
+        	updates[9] = doubleToStr(values[2]);
+        	if(updateSettings("u", "U", updates))
+        	{
+                FocuserSettingsNP.s = IPS_BUSY;
+                IUUpdateNumber(&FocuserSettingsNP, values, names, n);
+                IDSetNumber(&FocuserSettingsNP, NULL);
+                return true;
+        	}
             FocuserSettingsNP.s = IPS_ALERT;
             return true;
         }
@@ -374,28 +357,18 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         // Other settings
         if(!strcmp(name, OtherSettingsNP .name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "n");
-            if(sendCommand(cmd, res))
-            {
-                std::string concatSettings = "N";
-                std::vector<std::string> result = split(res, ":");
-                if(result.size() >= 14)
-                {
-                    result[1] = doubleToStr(values[0]);
-                    result[4] = doubleToStr(values[1]);
-                    result[2] = doubleToStr(values[2]);
-                    result[3] = doubleToStr(values[3]);
-                    for (const auto &piece : result) concatSettings += ":" + piece;
-                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    if(sendCommand(cmd, res))
-                    {
-                        OtherSettingsNP.s = IPS_BUSY;
-                        IUUpdateNumber(&OtherSettingsNP, values, names, n);
-                        IDSetNumber(&OtherSettingsNP, NULL);
-                        return true;
-                    }
-                }
-            }
+        	std::map<int, std::string> updates;
+        	updates[1] = doubleToStr(values[0]);
+        	updates[4] = doubleToStr(values[1]);
+        	updates[2] = doubleToStr(values[2]);
+        	updates[3] = doubleToStr(values[3]);
+        	if(updateSettings("n", "N", updates))
+        	{
+                OtherSettingsNP.s = IPS_BUSY;
+                IUUpdateNumber(&OtherSettingsNP, values, names, n);
+                IDSetNumber(&OtherSettingsNP, NULL);
+                return true;
+        	}
             OtherSettingsNP.s = IPS_ALERT;
             return true;
         }
@@ -520,27 +493,17 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // Power default on
         if(!strcmp(name, PowerDefaultOnSP.name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
-            if(sendCommand(cmd, res))
-            {
-                std::string concatSettings = "U";
-                std::vector<std::string> result = split(res, ":");
-                if(result.size() >= 15)
-                {
-                    result[14] = (states[0] == ISS_ON) ? "1" : "0";
-                    result[15] = (states[1] == ISS_ON) ? "1" : "0";
-                    result[16] = (states[2] == ISS_ON) ? "1" : "0";
-                    for (const auto &piece : result) concatSettings += ":" + piece;
-                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    if(sendCommand(cmd, res))
-                    {
-                        PowerDefaultOnSP.s = IPS_BUSY;
-                        IUUpdateSwitch(&PowerDefaultOnSP, states, names, n);
-                        IDSetSwitch(&PowerDefaultOnSP, NULL);
-                        return true;
-                    }
-                }
-            }
+        	std::map<int, std::string> updates;
+        	updates[14] = (states[0] == ISS_ON) ? "1" : "0";
+        	updates[15] = (states[1] == ISS_ON) ? "1" : "0";
+        	updates[16] = (states[2] == ISS_ON) ? "1" : "0";
+        	if(updateSettings("u", "U", updates))
+        	{
+                PowerDefaultOnSP.s = IPS_BUSY;
+                IUUpdateSwitch(&PowerDefaultOnSP, states, names, n);
+                IDSetSwitch(&PowerDefaultOnSP, NULL);
+                return true;
+        	}
             PowerDefaultOnSP.s = IPS_ALERT;
             return true;
         }
@@ -548,25 +511,13 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // Buzzer
         if(!strcmp(name, BuzzerSP.name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
-            if(sendCommand(cmd, res))
-            {
-                std::string concatSettings = "U";
-                std::vector<std::string> result = split(res, ":");
-                if(result.size() >= 15)
-                {
-                    result[11] = (states[0] == ISS_ON) ? "1" : "0";
-                    for (const auto &piece : result) concatSettings += ":" + piece;
-                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    if(sendCommand(cmd, res))
-                    {
-                        BuzzerSP.s = IPS_BUSY;
-                        IUUpdateSwitch(&BuzzerSP, states, names, n);
-                        IDSetSwitch(&BuzzerSP, NULL);
-                        return true;
-                    }
-                }
-            }
+        	if(updateSettings("u", "U", 11, (states[0] == ISS_ON) ? "1" : "0"))
+        	{
+                BuzzerSP.s = IPS_BUSY;
+                IUUpdateSwitch(&BuzzerSP, states, names, n);
+                IDSetSwitch(&BuzzerSP, NULL);
+                return true;
+        	}
             BuzzerSP.s = IPS_ALERT;
             return true;
         }
@@ -574,27 +525,17 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // Focuser Mode
         if(!strcmp(name, FocuserModeSP.name))
         {
-            snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
-            if(sendCommand(cmd, res))
-            {
-                std::string concatSettings = "U";
-                std::vector<std::string> result = split(res, ":");
-                if(result.size() >= 5)
-                {
-                    if(states[0] == ISS_ON) result[7] = "0";
-                    if(states[1] == ISS_ON) result[7] = "1";
-                    if(states[2] == ISS_ON) result[7] = "2";
-                    for (const auto &piece : result) concatSettings += ":" + piece;
-                    snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-                    if(sendCommand(cmd, res))
-                    {
-                        FocuserModeSP.s = IPS_BUSY;
-                        IUUpdateSwitch(&FocuserModeSP, states, names, n);
-                        IDSetSwitch(&FocuserModeSP, NULL);
-                        return true;
-                    }
-                }
-            }
+        	char * value;
+            if(states[0] == ISS_ON) value = "0";
+            if(states[1] == ISS_ON) value = "1";
+            if(states[2] == ISS_ON) value = "2";
+        	if(updateSettings("u", "U", 7, value))
+        	{
+                FocuserModeSP.s = IPS_BUSY;
+                IUUpdateSwitch(&FocuserModeSP, states, names, n);
+                IDSetSwitch(&FocuserModeSP, NULL);
+                return true;
+        	}
             FocuserModeSP.s = IPS_ALERT;
             return true;
         }
@@ -679,21 +620,7 @@ bool IndiAstrolink4::AbortFocuser()
 
 bool IndiAstrolink4::ReverseFocuser(bool enabled)
 {
-    char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "%s", "u");
-    if(sendCommand(cmd, res))
-    {
-        std::string concatSettings = "U";
-        std::vector<std::string> result = split(res, ":");
-        if(result.size() >= 6)
-        {
-            result[6] = enabled ? "1" : "0";
-            for (const auto &piece : result) concatSettings += ":" + piece;
-            snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
-            if(sendCommand(cmd, res)) return true;
-        }
-    }
-    return false;
+    return updateSettings("u", "U", 6, (enabled) ? "1" : "0");
 }
 
 bool IndiAstrolink4::SyncFocuser(uint32_t ticks)
@@ -977,4 +904,36 @@ std::string IndiAstrolink4::doubleToStr(double val)
     sprintf(buf, "%.f0", val);
     std::string ret(buf);
     return ret;
+}
+
+bool IndiAstrolink4::updateSettings(char * getCom, char * setCom, int index, char * value)
+{
+	std::map<int, std::string> values;
+	values[index] = value;
+
+    return updateSettings(getCom, setCom, values);
+}
+
+bool IndiAstrolink4::updateSettings(char * getCom, char * setCom, std::map<int, std::string> values)
+{
+    char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
+    snprintf(cmd, ASTROLINK4_LEN, "%s", getCom);
+    if(sendCommand(cmd, res))
+    {
+    	LOG_INFO(res);
+        std::string concatSettings = setCom;
+        std::vector<std::string> result = split(res, ":");
+        if(result.size() >= index)
+        {
+        	result.erase(result.begin());
+            for(std::map<int, std::string>::iterator it = values.begin(); it != values.end(); ++it)
+            	result[it->first] = it->second;
+
+            for (const auto &piece : result) concatSettings += ":" + piece;
+            snprintf(cmd, ASTROLINK4_LEN, "%s", concatSettings.c_str());
+            LOG_INFO(cmd);
+            if(sendCommand(cmd, res)) return true;
+        }
+    }
+	return false;
 }

@@ -22,6 +22,13 @@
 #include <string>
 #include <iostream>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <memory>
+#include <regex>
+#include <cstring>
+#include <map>
 
 #include <defaultdevice.h>
 #include <indifocuserinterface.h>
@@ -72,6 +79,8 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     Connection::Serial *serialConnection { nullptr };
+    bool updateSettings(char * getCom, char * setCom, int index, char * value);
+    bool updateSettings(char * getCom, char * setCom, std::map<int, std::string> values);
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     std::string doubleToStr(double val);
     bool sensorRead();
