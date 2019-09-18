@@ -136,6 +136,7 @@ bool IndiAstrolink4::initProperties()
     IUFillNumber(&FocuserSettingsN[FS_SPEED], "FS_SPEED", "Speed [pps]", "%.0f", 0, 4000, 50, 250);
     IUFillNumber(&FocuserSettingsN[FS_STEP_SIZE], "FS_STEP_SIZE", "Step size [um]", "%.2f", 0, 100, 0.1, 5.0);
     IUFillNumber(&FocuserSettingsN[FS_COMPENSATION], "FS_COMPENSATION", "Compensation [steps/C]", "%.1f", -1000, 1000, 1, 0);
+    IUFillNumber(&FocuserSettingsN[FS_COMP_THRESHOLD], "FS_COMP_THRESHOLD", "Compensation threshold [steps]", "%.1f", 1, 1000, 10, 10);
     IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 4, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
 
     IUFillSwitch(&FocuserModeS[FS_MODE_UNI], "FS_MODE_UNI", "Unipolar", ISS_ON);
@@ -313,7 +314,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
                 }
                 else
                 {
-                	LOG_INFO("Cannot set PWM output, it is in AUTO mode.");
+                	LOG_WARN("Cannot set PWM output, it is in AUTO mode.");
                 }
             }
             if(PWMN[1].value != values[1])
@@ -325,7 +326,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
                 }
                 else
                 {
-                	LOG_INFO("Cannot set PWM output, it is in AUTO mode.");
+                	LOG_WARN("Cannot set PWM output, it is in AUTO mode.");
                 }
             }
             PWMNP.s = (allOk) ? IPS_BUSY : IPS_ALERT;
@@ -339,15 +340,25 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         // Focuser settings
         if(!strcmp(name, FocuserSettingsNP .name))
         {
+        	bool allOk = true;
         	std::map<int, std::string> updates;
-        	updates[1] = doubleToStr(values[0]);
-        	updates[2] = doubleToStr(values[1]);
-        	updates[9] = doubleToStr(values[2]);
-        	if(updateSettings("u", "U", updates))
+        	updates[0] = doubleToStr(values[FS_MAX_POS]);
+        	updates[1] = doubleToStr(values[FS_SPEED]);
+        	updates[8] = doubleToStr(values[FS_STEP_SIZE] * 100.0);
+        	allOk = allOk && updateSettings("u", "U", updates);
+        	updates.clear();
+        	updates[0] = "30";
+        	updates[1] = doubleToStr(values[FS_COMPENSATION] * 100.0);
+        	updates[2] = "1";
+        	updates[3] = "1";
+        	updates[4] = doubleToStr(values[FS_COMP_THRESHOLD]);
+        	allOk = allOk && updateSettings("e", "E", updates);
+        	if(allOk)
         	{
                 FocuserSettingsNP.s = IPS_BUSY;
                 IUUpdateNumber(&FocuserSettingsNP, values, names, n);
                 IDSetNumber(&FocuserSettingsNP, NULL);
+                LOG_INFO(values[FS_COMPENSATION] > 0 ? "Temperature compensation is enabled." : "Temperature compensation is disabled.");
                 return true;
         	}
             FocuserSettingsNP.s = IPS_ALERT;
@@ -358,10 +369,10 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         if(!strcmp(name, OtherSettingsNP .name))
         {
         	std::map<int, std::string> updates;
-        	updates[1] = doubleToStr(values[0]);
-        	updates[4] = doubleToStr(values[1]);
-        	updates[2] = doubleToStr(values[2]);
-        	updates[3] = doubleToStr(values[3]);
+        	updates[SET_AREF_COEFF] = doubleToStr(values[0] * 1000.0);
+        	updates[SET_OVER_VOLT] = doubleToStr(values[1] * 10.0);
+        	updates[SET_OVER_AMP] = doubleToStr(values[2] * 10.0);
+        	updates[SET_OVER_TIME] = doubleToStr(values[3]);
         	if(updateSettings("n", "N", updates))
         	{
                 OtherSettingsNP.s = IPS_BUSY;
@@ -649,6 +660,7 @@ bool IndiAstrolink4::SetFocuserBacklashEnabled(bool enabled)
 /// q:1000:0:0.06:0: NAN:NAN:0.00:0:0.00:0:0:0:0:0:12.7:5.0:0.00:0.01:0:0:0:0
 /// u:100000:250:0:100:400:0:0:0:500:3:1:1:0:0:0:0:0:2148:443:
 /// n:1071:140:100:100:
+/// e:<cycle [s]>:<steps / 100>:<sensor>:<auto 0:1>:<trigger>
 bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 {
     int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
@@ -661,6 +673,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
         if(strcmp(cmd, "p") == 0) sprintf(res, "%s\n", "p:1234");
         if(strcmp(cmd, "i") == 0) sprintf(res, "%s\n", "i:0");
         if(strcmp(cmd, "n") == 0) sprintf(res, "%s\n", "n:1077:14.0:10.0:100");
+        if(strcmp(cmd, "e") == 0) sprintf(res, "%s\n", "e:30:1200:1:0:20")
         if(strncmp(cmd, "R", 1) == 0) sprintf(res, "%s\n", "R:");
         if(strncmp(cmd, "C", 1) == 0) sprintf(res, "%s\n", "C:");
         if(strncmp(cmd, "B", 1) == 0) sprintf(res, "%s\n", "B:");
@@ -672,6 +685,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
         if(strncmp(cmd, "G", 1) == 0) sprintf(res, "%s\n", "G:");
         if(strncmp(cmd, "K", 1) == 0) sprintf(res, "%s\n", "K:");
         if(strncmp(cmd, "N", 1) == 0) sprintf(res, "%s\n", "N:");
+        if(strncmp(cmd, "E", 1) == 0) sprintf(res, "%s\n", "E:");
     }
     else
     {

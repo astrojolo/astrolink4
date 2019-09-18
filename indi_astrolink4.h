@@ -122,7 +122,7 @@ private:
     INumberVectorProperty FocuserSettingsNP;
     enum
     {
-        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION
+        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION, FS_COMP_THRESHOLD
     };
     ISwitch FocuserModeS[3];
     ISwitchVectorProperty FocuserModeSP;
