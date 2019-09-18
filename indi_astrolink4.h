@@ -28,6 +28,11 @@
 #include <indiweatherinterface.h>
 #include <connectionplugins/connectionserial.h>
 
+namespace Connection
+{
+class Serial;
+}
+
 class IndiAstrolink4 : public INDI::DefaultDevice, public INDI::FocuserInterface, public INDI::WeatherInterface
 {
 
@@ -44,7 +49,6 @@ protected:
 	virtual const char *getDefaultName();
 	virtual void TimerHit();
 	virtual bool saveConfigItems(FILE *fp);
-	Connection::Serial *serialConnection = NULL;
     virtual bool sendCommand(const char * cmd, char * res);
 
     // Focuser Overrides
@@ -67,6 +71,7 @@ protected:
 private:
 	virtual bool Handshake();
 	int PortFD = -1;
+    Connection::Serial *serialConnection { nullptr };
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     std::string doubleToStr(double val);
     bool sensorRead();
