@@ -135,9 +135,9 @@ bool IndiAstrolink4::initProperties()
     IUFillNumber(&FocuserSettingsN[FS_MAX_POS], "FS_MAX_POS", "Max. position", "%.0f", 0, 1000000, 1000, 10000);
     IUFillNumber(&FocuserSettingsN[FS_SPEED], "FS_SPEED", "Speed [pps]", "%.0f", 0, 4000, 50, 250);
     IUFillNumber(&FocuserSettingsN[FS_STEP_SIZE], "FS_STEP_SIZE", "Step size [um]", "%.2f", 0, 100, 0.1, 5.0);
-    IUFillNumber(&FocuserSettingsN[FS_COMPENSATION], "FS_COMPENSATION", "Compensation [steps/C]", "%.1f", -1000, 1000, 1, 0);
-    IUFillNumber(&FocuserSettingsN[FS_COMP_THRESHOLD], "FS_COMP_THRESHOLD", "Compensation threshold [steps]", "%.1f", 1, 1000, 10, 10);
-    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 4, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumber(&FocuserSettingsN[FS_COMPENSATION], "FS_COMPENSATION", "Compensation [steps/C]", "%.2f", -1000, 1000, 1, 0);
+    IUFillNumber(&FocuserSettingsN[FS_COMP_THRESHOLD], "FS_COMP_THRESHOLD", "Compensation threshold [steps]", "%.0f", 1, 1000, 10, 10);
+    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 5, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
 
     IUFillSwitch(&FocuserModeS[FS_MODE_UNI], "FS_MODE_UNI", "Unipolar", ISS_ON);
     IUFillSwitch(&FocuserModeS[FS_MODE_BI], "FS_MODE_BI", "Bipolar", ISS_OFF);
@@ -155,7 +155,7 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitchVector(&BuzzerSP, BuzzerS, 1, getDeviceName(), "BUZZER", "ON/OFF", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
     
     // focuser compensation
-    IUFillNumber(&CompensationValueN[0], "COMP_VALUE", "Compensation steps", "%.0f", 0, 10000, 1, 0);
+    IUFillNumber(&CompensationValueN[0], "COMP_VALUE", "Compensation steps", "%.0f", -10000, 10000, 1, 0);
     IUFillNumberVector(&CompensationValueNP, CompensationValueN, 1, getDeviceName(), "COMP_STEPS", "Compensation steps", FOCUS_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillSwitch(&CompensateNowS[0], "COMP_NOW", "Compensate now", ISS_OFF);
@@ -369,10 +369,10 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         if(!strcmp(name, OtherSettingsNP .name))
         {
         	std::map<int, std::string> updates;
-        	updates[SET_AREF_COEFF] = doubleToStr(values[0] * 1000.0);
-        	updates[SET_OVER_VOLT] = doubleToStr(values[1] * 10.0);
-        	updates[SET_OVER_AMP] = doubleToStr(values[2] * 10.0);
-        	updates[SET_OVER_TIME] = doubleToStr(values[3]);
+        	updates[0] = doubleToStr(values[SET_AREF_COEFF] * 1000.0);
+        	updates[1] = doubleToStr(values[SET_OVER_VOLT] * 10.0);
+        	updates[2] = doubleToStr(values[SET_OVER_AMP] * 10.0);
+        	updates[3] = doubleToStr(values[SET_OVER_TIME]);
         	if(updateSettings("n", "N", updates))
         	{
                 OtherSettingsNP.s = IPS_BUSY;
@@ -819,6 +819,13 @@ bool IndiAstrolink4::sensorRead()
             PowerDataN[1].value = std::stod(result[16]);
             PowerDataN[3].value = std::stod(result[17]);
             PowerDataN[4].value = std::stod(result[18]);
+
+            if(!strcmp(result[21].c_str(), "0"))
+            {
+            	int opFlag = std::stoi(result[21]);
+            	LOGF_WARN("Protection triggered, outputs were disabled. Reason: %s was too high, value: %.1f",
+            			(opFlag == 1) ? "voltage" : "current", std::stod(result[22]));
+            }
         }
         PowerDataNP.s=IPS_OK;
         IDSetNumber(&PowerDataNP, NULL);
