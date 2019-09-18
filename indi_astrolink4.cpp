@@ -126,12 +126,6 @@ bool IndiAstrolink4::initProperties()
     addConfigurationControl();
     addPollPeriodControl();
 
-	// power lines
-    IUFillText(&PowerLabelsT[0], "POWER_LABEL_1", "12V out 1", "12V out 1");
-    IUFillText(&PowerLabelsT[1], "POWER_LABEL_2", "12V out 2", "12V out 2");
-    IUFillText(&PowerLabelsT[2], "POWER_LABEL_3", "12V out 3", "12V out 3");
-    IUFillTextVector(&PowerLabelsTP, PowerLabelsT, 3, getDeviceName(), "POWER_CONTROL_LABEL", "12V outputs labels", SETTINGS_TAB, IP_WO, 60, IPS_IDLE);
-
     // focuser settings
     IUFillNumber(&FocuserSettingsN[FS_MAX_POS], "FS_MAX_POS", "Max. position", "%.0f", 0, 1000000, 1000, 10000);
     IUFillNumber(&FocuserSettingsN[FS_SPEED], "FS_SPEED", "Speed [pps]", "%.0f", 0, 4000, 50, 250);
@@ -153,24 +147,24 @@ bool IndiAstrolink4::initProperties()
     IUFillNumberVector(&OtherSettingsNP, OtherSettingsN, 4, getDeviceName(), "OTHER_SETTINGS", "Device settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
 
     IUFillSwitch(&BuzzerS[0], "BUZZER", "Buzzer", ISS_OFF);
-    IUFillSwitchVector(&BuzzerSP, BuzzerS, 1, getDeviceName(), "BUZZER", "ON/OFF", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
-    
+    IUFillSwitchVector(&BuzzerSP, BuzzerS, 1, getDeviceName(), "BUZZER", "ONOFF", SETTINGS_TAB, IP_RW, ISR_NOFMANY, 60, IPS_IDLE);
+
     // focuser compensation
     IUFillNumber(&CompensationValueN[0], "COMP_VALUE", "Compensation steps", "%.0f", -10000, 10000, 1, 0);
     IUFillNumberVector(&CompensationValueNP, CompensationValueN, 1, getDeviceName(), "COMP_STEPS", "Compensation steps", FOCUS_TAB, IP_RO, 60, IPS_IDLE);
 
     IUFillSwitch(&CompensateNowS[0], "COMP_NOW", "Compensate now", ISS_OFF);
     IUFillSwitchVector(&CompensateNowSP, CompensateNowS, 1, getDeviceName(), "COMP_NOW", "Compensate now", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
-    
+
     // power lines
     char portLabel[MAXINDILABEL];
-    
+
     memset(portLabel, 0, MAXINDILABEL);
     int portRC = IUGetConfigText(getDeviceName(), PowerLabelsTP.name, PowerLabelsT[0].name, portLabel, MAXINDILABEL);
     IUFillSwitch(&Power1S[0], "PWR1BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power1S[1], "PWR1BTN_OFF", "OFF", ISS_ON);
     IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", portRC == -1 ? "12V out 1" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
-    
+
     memset(portLabel, 0, MAXINDILABEL);
     portRC = IUGetConfigText(getDeviceName(), PowerLabelsTP.name, PowerLabelsT[1].name, portLabel, MAXINDILABEL);
     IUFillSwitch(&Power2S[0], "PWR2BTN_ON", "ON", ISS_OFF);
@@ -182,7 +176,12 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&Power3S[0], "PWR3BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
     IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "12V out 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
-    
+
+    IUFillText(&PowerLabelsT[0], "POWER_LABEL_1", "12V out 1", "12V out 1");
+    IUFillText(&PowerLabelsT[1], "POWER_LABEL_2", "12V out 2", "12V out 2");
+    IUFillText(&PowerLabelsT[2], "POWER_LABEL_3", "12V out 3", "12V out 3");
+    IUFillTextVector(&PowerLabelsTP, PowerLabelsT, 3, getDeviceName(), "POWER_CONTROL_LABEL", "12V outputs labels", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+
     IUFillSwitch(&PowerDefaultOnS[0], "POW_DEF_ON1", "DC1", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[1], "POW_DEF_ON2", "DC2", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[2], "POW_DEF_ON3", "DC3", ISS_OFF);
@@ -509,9 +508,9 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         if(!strcmp(name, PowerDefaultOnSP.name))
         {
         	std::map<int, std::string> updates;
-        	updates[14] = (states[0] == ISS_ON) ? "1" : "0";
-        	updates[15] = (states[1] == ISS_ON) ? "1" : "0";
-        	updates[16] = (states[2] == ISS_ON) ? "1" : "0";
+            updates[15] = (states[0] == ISS_ON) ? "1" : "0";
+            updates[16] = (states[1] == ISS_ON) ? "1" : "0";
+            updates[17] = (states[2] == ISS_ON) ? "1" : "0";
             if(updateSettings("u", "U", updates))
         	{
                 PowerDefaultOnSP.s = IPS_BUSY;
@@ -734,7 +733,7 @@ bool IndiAstrolink4::sensorRead()
     // <sensor 1 type>:<sensor 1 temp>:<sensor 1 humidity>:<dewpoint>:<sensor 2 type>:<sensor 2 temp>:
     //<pwm1>:<pwm2>:<out1>:<out2>:<out3>:
     //<Vin>:<Vreg>:<Ah>:<Wh>:<DCmotorMove>:<CompDiff>:<OverProtectFlag>:<OverProtectValue>
-    
+
     char res[ASTROLINK4_LEN] = {0};
     if (sendCommand("q", res))
     {
@@ -799,12 +798,15 @@ bool IndiAstrolink4::sensorRead()
             if(Power1SP.s != IPS_OK || Power2SP.s != IPS_OK || Power3SP.s != IPS_OK)
             {
                 Power1S[0].s = (std::stod(result[12]) > 0) ? ISS_ON : ISS_OFF;
+                Power1S[1].s = (std::stod(result[12]) == 0) ? ISS_ON : ISS_OFF;
                 Power1SP.s = IPS_OK;
                 IDSetSwitch(&Power1SP, NULL);
                 Power2S[0].s = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
+                Power2S[1].s = (std::stod(result[13]) == 0) ? ISS_ON : ISS_OFF;
                 Power2SP.s = IPS_OK;
                 IDSetSwitch(&Power2SP, NULL);
                 Power3S[0].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
+                Power3S[1].s = (std::stod(result[14]) == 0) ? ISS_ON : ISS_OFF;
                 Power3SP.s = IPS_OK;
                 IDSetSwitch(&Power3SP, NULL);
             }
@@ -851,9 +853,9 @@ bool IndiAstrolink4::sensorRead()
             FocuserModeSP.s = IPS_OK;
             IDSetSwitch(&FocuserModeSP, NULL);
             
-            PowerDefaultOnS[0].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
-            PowerDefaultOnS[1].s = (std::stod(result[15]) > 0) ? ISS_ON : ISS_OFF;
-            PowerDefaultOnS[2].s = (std::stod(result[16]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[0].s = (std::stod(result[15]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[1].s = (std::stod(result[16]) > 0) ? ISS_ON : ISS_OFF;
+            PowerDefaultOnS[2].s = (std::stod(result[17]) > 0) ? ISS_ON : ISS_OFF;
             PowerDefaultOnSP.s = IPS_OK;
             IDSetSwitch(&PowerDefaultOnSP, NULL);
             
@@ -895,6 +897,7 @@ bool IndiAstrolink4::sensorRead()
             IDSetNumber(&OtherSettingsNP, NULL);
         }
     }
+
     return true;
     
     /*
