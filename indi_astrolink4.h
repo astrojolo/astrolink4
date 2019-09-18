@@ -22,6 +22,13 @@
 #include <string>
 #include <iostream>
 #include <stdio.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <memory>
+#include <regex>
+#include <cstring>
+#include <map>
 
 #include <defaultdevice.h>
 #include <indifocuserinterface.h>
@@ -72,15 +79,17 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     Connection::Serial *serialConnection { nullptr };
+    bool updateSettings(char * getCom, char * setCom, int index, char * value);
+    bool updateSettings(char * getCom, char * setCom, std::map<int, std::string> values);
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     std::string doubleToStr(double val);
     bool sensorRead();
     bool setAutoPWM();
+    int32_t calculateBacklash(uint32_t targetTicks);
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
     int32_t backlashSteps = 0;
-    bool applyBacklash = false;
-    FocusDirection lastMoveDirection = FOCUS_INWARD;
+    bool requireBacklashReturn = false;
     
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
@@ -113,7 +122,7 @@ private:
     INumberVectorProperty FocuserSettingsNP;
     enum
     {
-        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION
+        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION, FS_COMP_THRESHOLD
     };
     ISwitch FocuserModeS[3];
     ISwitchVectorProperty FocuserModeSP;
