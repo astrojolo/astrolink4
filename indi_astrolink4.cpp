@@ -37,8 +37,6 @@
 //////////////////////////////////////////////////////////////////////
 std::unique_ptr<IndiAstrolink4> indiAstrolink4(new IndiAstrolink4());
 
-void ISPoll(void *p);
-
 void ISGetProperties(const char *dev)
 {
     indiAstrolink4->ISGetProperties(dev);
@@ -320,6 +318,10 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
                     sprintf(cmd, "B:0:%d", static_cast<uint8_t>(values[0]));
                     allOk = allOk && sendCommand(cmd, res);
                 }
+                else
+                {
+                	LOG_INFO("Cannot set PWM output, it is in AUTO mode.");
+                }
             }
             if(PWMN[1].value != values[1])
             {
@@ -327,6 +329,10 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
                 {
                     sprintf(cmd, "B:1:%d", static_cast<uint8_t>(values[1]));
                     allOk = allOk && sendCommand(cmd, res);
+                }
+                else
+                {
+                	LOG_INFO("Cannot set PWM output, it is in AUTO mode.");
                 }
             }
             PWMNP.s = (allOk) ? IPS_BUSY : IPS_ALERT;
@@ -483,20 +489,8 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // Auto PWM
         if (!strcmp(name, AutoPWMSP.name))
         {
-            ISState pwmA = AutoPWMS[0].s;
-            ISState pwmB = AutoPWMS[1].s;
             IUUpdateSwitch(&AutoPWMSP, states, names, n);
-            if (setAutoPWM())
-            {
-                AutoPWMSP.s = IPS_OK;
-            }
-            else
-            {
-                IUResetSwitch(&AutoPWMSP);
-                AutoPWMS[0].s = pwmA;
-                AutoPWMS[1].s = pwmB;
-                AutoPWMSP.s = IPS_ALERT;
-            }
+            AutoPWMSP.s = (setAutoPWM()) ? IPS_OK : IPS_ALERT;
             IDSetSwitch(&AutoPWMSP, nullptr);
             return true;
         }
@@ -718,6 +712,7 @@ bool IndiAstrolink4::SetFocuserBacklash(int32_t steps)
 bool IndiAstrolink4::SetFocuserBacklashEnabled(bool enabled)
 {
     backlashEnabled = enabled;
+    return true;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -755,6 +750,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
     {
         tcflush(PortFD, TCIOFLUSH);
         sprintf(command, "%s\n", cmd);
+        LOGF_DEBUG("CMD <%s>", command);
         if ( (tty_rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
             return false;
 
@@ -836,10 +832,8 @@ bool IndiAstrolink4::sensorRead()
                 Sensor2NP.s = IPS_IDLE;
             }
                 
-            float pwmA = std::stod(result[10]);
-            float pwmB = std::stod(result[11]);
-            PWMN[0].value = pwmA;
-            PWMN[1].value = pwmB;
+            PWMN[0].value = std::stod(result[10]);
+            PWMN[1].value = std::stod(result[11]);
             PWMNP.s = IPS_OK;
             IDSetNumber(&PWMNP, NULL);
             
@@ -857,21 +851,15 @@ bool IndiAstrolink4::sensorRead()
                 IDSetSwitch(&DCFocAbortSP, NULL);
             }
             
-            ISState power1 = (std::stod(result[12]) > 0) ? ISS_ON : ISS_OFF;
-            ISState power2 = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
-            ISState power3 = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
             if(Power1SP.s != IPS_OK || Power2SP.s != IPS_OK || Power3SP.s != IPS_OK)
             {
-                Power1S[0].s = (power1 == ISS_ON) ? ISS_ON : ISS_OFF;
-                Power1S[1].s = (power1 == ISS_OFF) ? ISS_ON : ISS_OFF;
+                Power1S[0].s = (std::stod(result[12]) > 0) ? ISS_ON : ISS_OFF;
                 Power1SP.s = IPS_OK;
                 IDSetSwitch(&Power1SP, NULL);
-                Power2S[0].s = (power2 == ISS_ON) ? ISS_ON : ISS_OFF;
-                Power2S[1].s = (power2 == ISS_OFF) ? ISS_ON : ISS_OFF;
+                Power2S[0].s = (std::stod(result[13]) > 0) ? ISS_ON : ISS_OFF;
                 Power2SP.s = IPS_OK;
                 IDSetSwitch(&Power2SP, NULL);
-                Power3S[0].s = (power3 == ISS_ON) ? ISS_ON : ISS_OFF;
-                Power3S[1].s = (power3 == ISS_OFF) ? ISS_ON : ISS_OFF;
+                Power3S[0].s = (std::stod(result[14]) > 0) ? ISS_ON : ISS_OFF;
                 Power3SP.s = IPS_OK;
                 IDSetSwitch(&Power3SP, NULL);
             }
@@ -880,9 +868,7 @@ bool IndiAstrolink4::sensorRead()
             if(CompensationValueN[0].value != compensationVal)
             {
                 CompensationValueN[0].value = compensationVal;
-                IPState newState = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
-                CompensationValueNP.s = newState;
-                CompensateNowSP.s = newState;
+                CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
                 CompensateNowS[0].s = ISS_OFF;
                 IDSetNumber(&CompensationValueNP, NULL);
                 IDSetSwitch(&CompensateNowSP, NULL);
@@ -928,6 +914,7 @@ bool IndiAstrolink4::sensorRead()
             IDSetSwitch(&BuzzerSP, NULL);
         }
     }
+
     if(OtherSettingsNP.s != IPS_OK)
     {
         if (sendCommand("n", res))
@@ -935,12 +922,13 @@ bool IndiAstrolink4::sensorRead()
             std::vector<std::string> result = split(res, ":");
             OtherSettingsN[SET_AREF_COEFF].value = std::stod(result[1]) / 1000.0;
             OtherSettingsN[SET_OVER_TIME].value = std::stod(result[4]);
-            OtherSettingsN[SET_OVER_VOLT].value = std::stod(result[2]);
-            OtherSettingsN[SET_OVER_AMP].value = std::stod(result[3]);
+            OtherSettingsN[SET_OVER_VOLT].value = std::stod(result[2]) / 10.0;
+            OtherSettingsN[SET_OVER_AMP].value = std::stod(result[3]) / 10.0;
             OtherSettingsNP.s = IPS_OK;
             IDSetNumber(&OtherSettingsNP, NULL);
         }
     }
+    return true;
     
     /*
      parsed data:

@@ -76,7 +76,7 @@ private:
     std::string doubleToStr(double val);
     bool sensorRead();
     bool setAutoPWM();
-    int32_t calculateBacklash(uint32_t targetTicks)
+    int32_t calculateBacklash(uint32_t targetTicks);
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
     int32_t backlashSteps = 0;
