@@ -29,11 +29,64 @@
 #include <regex>
 #include <cstring>
 #include <map>
+#include <sstream>
 
 #include <defaultdevice.h>
 #include <indifocuserinterface.h>
 #include <indiweatherinterface.h>
 #include <connectionplugins/connectionserial.h>
+
+#define Q_STEPPER_POS		1
+#define Q_STEPS_TO_GO		2
+#define Q_CURRENT			3
+#define Q_SENS1_TYPE		4
+#define Q_SENS1_TEMP		5
+#define Q_SENS1_HUM			6
+#define Q_SENS1_DEW			7
+#define Q_SENS2_TYPE		8
+#define Q_SENS2_TEMP		9
+#define Q_PWM1				10
+#define Q_PWM2				11
+#define Q_OUT1				12
+#define Q_OUT2				13
+#define Q_OUT3				14
+#define Q_VIN				15
+#define Q_VREG				16
+#define Q_AH				17
+#define Q_WH				18
+#define Q_DC_MOVE			19
+#define Q_COMP_DIFF			20
+#define Q_OP_FLAG			21
+#define Q_OP_VALUE			22
+
+#define U_MAX_POS			1
+#define U_SPEED				2
+#define U_PWMSTOP			3
+#define U_PWMRUN			4
+#define U_ACC				5
+#define U_REVERSED			6
+#define U_STEPPER_MODE		7
+#define U_COMPSENS			8
+#define U_STEPSIZE			9
+#define U_PWMPRESC			10
+#define U_STEPPRESC			11
+#define U_BUZ_ENABLED		12
+#define U_HUM_SENS			13
+#define U_DC_REVERSED		14
+#define U_OUT1_DEF			15
+#define U_OUT2_DEF			16
+#define U_OUT3_DEF			17
+
+#define E_COMP_CYCLE		1
+#define E_COMP_STEPS		2
+#define E_COMP_SENSR		3
+#define E_COMP_AUTO			4
+#define E_COMP_TRGR			5
+
+#define N_AREF_COEFF		1
+#define N_OVER_VOLT			2
+#define N_OVER_AMP			3
+#define N_OVER_TIME			4
 
 namespace Connection
 {
@@ -109,6 +162,13 @@ private:
     
     INumber PowerDataN[5];
     INumberVectorProperty PowerDataNP;
+    enum
+	{
+    	POW_VIN, POW_VREG, POW_ITOT, POW_AH, POW_WH
+	};
+
+    INumber FocusPosMMN[1];
+    INumberVectorProperty FocusPosMMNP;
 
     INumber CompensationValueN[1];
     INumberVectorProperty CompensationValueNP;
@@ -130,7 +190,21 @@ private:
     {
       FS_MODE_UNI, FS_MODE_BI, FS_MODE_MICRO
     };
+
+    ISwitch FocuserCompModeS[2];
+    ISwitchVectorProperty FocuserCompModeSP;
+    enum
+	{
+    	FS_COMP_AUTO, FS_COMP_MANUAL
+	};
     
+    ISwitch FocuserManualS[2];
+    ISwitchVectorProperty FocuserManualSP;
+    enum
+	{
+    	FS_MANUAL_ON, FS_MANUAL_OFF
+	};
+
     ISwitch PowerDefaultOnS[3];
     ISwitchVectorProperty PowerDefaultOnSP;
     
@@ -154,7 +228,7 @@ private:
     ISwitch DCFocAbortS[1];
     ISwitchVectorProperty DCFocAbortSP;
 
-    ISwitch BuzzerS[0];
+    ISwitch BuzzerS[1];
     ISwitchVectorProperty BuzzerSP;
     
 	static constexpr const char *POWER_TAB {"Power"};
