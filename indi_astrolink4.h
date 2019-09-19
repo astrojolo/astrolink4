@@ -120,6 +120,7 @@ protected:
 
     virtual bool SetFocuserBacklash(int32_t steps) override;
     virtual bool SetFocuserBacklashEnabled(bool enabled) override;
+    virtual bool SetFocuserMaxPosition(uint32_t ticks) override;
 
     // Weather Overrides
     virtual IPState updateWeather() override
@@ -178,11 +179,11 @@ private:
     IText PowerLabelsT[3] = {};
     ITextVectorProperty PowerLabelsTP;
 
-    INumber FocuserSettingsN[5];
+    INumber FocuserSettingsN[4];
     INumberVectorProperty FocuserSettingsNP;
     enum
     {
-        FS_MAX_POS, FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION, FS_COMP_THRESHOLD
+        FS_SPEED, FS_STEP_SIZE, FS_COMPENSATION, FS_COMP_THRESHOLD
     };
     ISwitch FocuserModeS[3];
     ISwitchVectorProperty FocuserModeSP;

@@ -123,15 +123,13 @@ bool IndiAstrolink4::initProperties()
     addDebugControl();
     addSimulationControl();
     addConfigurationControl();
-    addPollPeriodControl();
 
     // focuser settings
-    IUFillNumber(&FocuserSettingsN[FS_MAX_POS], "FS_MAX_POS", "Max. position", "%.0f", 0, 1000000, 1000, 10000);
     IUFillNumber(&FocuserSettingsN[FS_SPEED], "FS_SPEED", "Speed [pps]", "%.0f", 0, 4000, 50, 250);
     IUFillNumber(&FocuserSettingsN[FS_STEP_SIZE], "FS_STEP_SIZE", "Step size [um]", "%.2f", 0, 100, 0.1, 5.0);
     IUFillNumber(&FocuserSettingsN[FS_COMPENSATION], "FS_COMPENSATION", "Compensation [steps/C]", "%.2f", -1000, 1000, 1, 0);
     IUFillNumber(&FocuserSettingsN[FS_COMP_THRESHOLD], "FS_COMP_THRESHOLD", "Compensation threshold [steps]", "%.0f", 1, 1000, 10, 10);
-    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 5, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillNumberVector(&FocuserSettingsNP, FocuserSettingsN, 4, getDeviceName(), "FOCUSER_SETTINGS", "Focuser settings", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
 
     IUFillSwitch(&FocuserModeS[FS_MODE_UNI], "FS_MODE_UNI", "Unipolar", ISS_ON);
     IUFillSwitch(&FocuserModeS[FS_MODE_BI], "FS_MODE_BI", "Bipolar", ISS_OFF);
@@ -140,7 +138,7 @@ bool IndiAstrolink4::initProperties()
 
     IUFillSwitch(&FocuserCompModeS[FS_COMP_AUTO], "FS_COMP_AUTO", "AUTO", ISS_OFF);
     IUFillSwitch(&FocuserCompModeS[FS_COMP_MANUAL], "FS_COMP_MANUAL", "MANUAL", ISS_ON);
-    IUFillSwitchVector(&FocuserCompModeSP, FocuserModeS, 2, getDeviceName(), "COMP_MODE", "Compensation mode", SETTINGS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
+    IUFillSwitchVector(&FocuserCompModeSP, FocuserCompModeS, 2, getDeviceName(), "COMP_MODE", "Compensation mode", SETTINGS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
 
     IUFillSwitch(&FocuserManualS[FS_MANUAL_ON], "FS_MANUAL_ON", "ON", ISS_ON);
     IUFillSwitch(&FocuserManualS[FS_MANUAL_OFF], "FS_MANUAL_OFF", "OFF", ISS_OFF);
@@ -357,7 +355,6 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         {
         	bool allOk = true;
         	std::map<int, std::string> updates;
-            updates[U_MAX_POS] = doubleToStr(values[FS_MAX_POS]);
             updates[U_SPEED] = doubleToStr(values[FS_SPEED]);
             updates[U_ACC] = doubleToStr(values[FS_SPEED] * 2.0);
             updates[U_STEPSIZE] = doubleToStr(values[FS_STEP_SIZE] * 100.0);
@@ -554,7 +551,8 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         // Manual mode
         if(!strcmp(name, FocuserManualSP.name))
         {
-            if(updateSettings("f", "F", 1, (states[0] == ISS_ON) ? "1" : "0"))
+            sprintf(cmd, "F:%s", (strcmp(FocuserManualS[0].name, names[0])) ? "0" : "1");
+            if(sendCommand(cmd, res))
         	{
             	FocuserManualSP.s = IPS_BUSY;
                 IUUpdateSwitch(&FocuserManualSP, states, names, n);
@@ -695,14 +693,27 @@ bool IndiAstrolink4::AbortFocuser()
 
 bool IndiAstrolink4::ReverseFocuser(bool enabled)
 {
-    return updateSettings("u", "U", 6, (enabled) ? "1" : "0");
+    return updateSettings("u", "U", U_REVERSED, (enabled) ? "1" : "0");
 }
 
 bool IndiAstrolink4::SyncFocuser(uint32_t ticks)
 {
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "P:%u", ticks);
+    snprintf(cmd, ASTROLINK4_LEN, "P:0:%u", ticks);
     return sendCommand(cmd, res);
+}
+
+bool IndiAstrolink4::SetFocuserMaxPosition(uint32_t ticks)
+{
+    if(updateSettings("u", "U", U_MAX_POS, std::to_string(ticks).c_str()))
+    {
+        FocuserSettingsNP.s = IPS_BUSY;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 bool IndiAstrolink4::SetFocuserBacklash(int32_t steps)
@@ -792,15 +803,19 @@ bool IndiAstrolink4::sensorRead()
         FocusAbsPosN[0].value = focuserPosition;
         FocusPosMMN[0].value = focuserPosition * FocuserSettingsN[FS_STEP_SIZE].value / 1000.0;
         float stepsToGo = std::stod(result[Q_STEPS_TO_GO]);
-        if(stepsToGo <= 0)
+        if(stepsToGo == 0)
         {
         	if(requireBacklashReturn)
         	{
         		requireBacklashReturn = false;
         		MoveAbsFocuser(focuserPosition - backlashSteps);
         	}
-            FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
+            FocusAbsPosNP.s = FocusRelPosNP.s = FocusPosMMNP.s = IPS_OK;
             IDSetNumber(&FocusRelPosNP, nullptr);
+        }
+        else
+        {
+            FocusAbsPosNP.s = FocusRelPosNP.s = FocusPosMMNP.s = IPS_BUSY;
         }
         IDSetNumber(&FocusPosMMNP, nullptr);
         IDSetNumber(&FocusAbsPosNP, nullptr);
@@ -867,15 +882,11 @@ bool IndiAstrolink4::sensorRead()
                 IDSetSwitch(&Power3SP, nullptr);
             }
             
-            float compensationVal = std::stod(result[Q_COMP_DIFF]);
-            if(CompensationValueN[0].value != compensationVal)
-            {
-                CompensationValueN[0].value = compensationVal;
-                CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
-                CompensateNowS[0].s = ISS_OFF;
-                IDSetNumber(&CompensationValueNP, nullptr);
-                IDSetSwitch(&CompensateNowSP, nullptr);
-            }
+            CompensationValueN[0].value = std::stod(result[Q_COMP_DIFF]);
+            CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
+            CompensateNowS[0].s = (CompensationValueN[0].value > 0) ? ISS_OFF : ISS_ON;
+            IDSetNumber(&CompensationValueNP, nullptr);
+            IDSetSwitch(&CompensateNowSP, nullptr);
             
             PowerDataN[POW_VIN].value = std::stod(result[Q_VIN]);
             PowerDataN[POW_VREG].value = std::stod(result[Q_VREG]);
@@ -896,7 +907,7 @@ bool IndiAstrolink4::sensorRead()
     }
 
     // update settings data if was changed
-    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || PowerDefaultOnSP.s != IPS_OK || BuzzerSP.s != IPS_OK)
+    if(FocuserSettingsNP.s != IPS_OK || FocuserModeSP.s != IPS_OK || PowerDefaultOnSP.s != IPS_OK || BuzzerSP.s != IPS_OK || FocuserCompModeSP.s != IPS_OK)
     {
         if (sendCommand("u", res))
         {
@@ -915,11 +926,12 @@ bool IndiAstrolink4::sensorRead()
             PowerDefaultOnSP.s = IPS_OK;
             IDSetSwitch(&PowerDefaultOnSP, nullptr);
             
-            FocuserSettingsN[FS_MAX_POS].value = std::stod(result[U_MAX_POS]);
             FocuserSettingsN[FS_SPEED].value = std::stod(result[U_SPEED]);
             FocuserSettingsN[FS_STEP_SIZE].value = std::stod(result[U_STEPSIZE]) / 100.0;
+            FocusMaxPosN[0].value = std::stod(result[U_MAX_POS]);
             FocuserSettingsNP.s = IPS_OK;
             IDSetNumber(&FocuserSettingsNP, nullptr);
+            IDSetNumber(&FocusMaxPosNP, nullptr);
         }
 
         if(sendCommand("j", res))
