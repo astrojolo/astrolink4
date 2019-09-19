@@ -637,8 +637,24 @@ bool IndiAstrolink4::setAutoPWM()
 //////////////////////////////////////////////////////////////////////
 IPState IndiAstrolink4::MoveAbsFocuser(uint32_t targetTicks)
 {
+	int32_t backlash = 0;
+	if(backlashEnabled)
+	{
+		if((targetTicks > FocusAbsPosN[0].value) == (backlashSteps > 0))
+		{
+			if((targetTicks + backlash) < 0 || (targetTicks + backlash) > FocusMaxPosN[0].value)
+			{
+				backlash = 0;
+			}
+			else
+			{
+				backlash = backlashSteps;
+				requireBacklashReturn = true;
+			}
+		}
+	}
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks);
+    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks + backlash);
     return (sendCommand(cmd, res)) ? IPS_BUSY : IPS_ALERT;
 }
 
@@ -758,6 +774,11 @@ bool IndiAstrolink4::sensorRead()
         float stepsToGo = std::stod(result[Q_STEPS_TO_GO]);
         if(stepsToGo <= 0)
         {
+        	if(requireBacklashReturn)
+        	{
+        		requireBacklashReturn = false;
+        		MoveAbsFocuser(focuserPosition - backlashSteps);
+        	}
             FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
             IDSetNumber(&FocusRelPosNP, nullptr);
         }
