@@ -167,6 +167,9 @@ private:
     	POW_VIN, POW_VREG, POW_ITOT, POW_AH, POW_WH
 	};
 
+    INumber FocusPosMMN[1];
+    INumberVectorProperty FocusPosMMNP;
+
     INumber CompensationValueN[1];
     INumberVectorProperty CompensationValueNP;
     ISwitch CompensateNowS[1];
@@ -195,6 +198,13 @@ private:
     	FS_COMP_AUTO, FS_COMP_MANUAL
 	};
     
+    ISwitch FocuserManualS[2];
+    ISwitchVectorProperty FocuserManualSP;
+    enum
+	{
+    	FS_MANUAL_ON, FS_MANUAL_OFF
+	};
+
     ISwitch PowerDefaultOnS[3];
     ISwitchVectorProperty PowerDefaultOnSP;
     

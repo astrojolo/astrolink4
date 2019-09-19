@@ -142,6 +142,10 @@ bool IndiAstrolink4::initProperties()
     IUFillSwitch(&FocuserCompModeS[FS_COMP_MANUAL], "FS_COMP_MANUAL", "MANUAL", ISS_ON);
     IUFillSwitchVector(&FocuserCompModeSP, FocuserModeS, 2, getDeviceName(), "COMP_MODE", "Compensation mode", SETTINGS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
 
+    IUFillSwitch(&FocuserManualS[FS_MANUAL_ON], "FS_MANUAL_ON", "ON", ISS_ON);
+    IUFillSwitch(&FocuserManualS[FS_MANUAL_OFF], "FS_MANUAL_OFF", "OFF", ISS_OFF);
+    IUFillSwitchVector(&FocuserManualSP, FocuserManualS, 2, getDeviceName(), "MANUAL_CONTROLLER", "Hand controller", SETTINGS_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
+
     // other settings
     IUFillNumber(&OtherSettingsN[SET_AREF_COEFF], "SET_AREF_COEFF", "V ref coefficient", "%.3f", 0.9, 1.2, 0.001, 1.09);
     IUFillNumber(&OtherSettingsN[SET_OVER_TIME], "SET_OVER_TIME", "Protection sensitivity [ms]", "%.0f", 10, 500, 10, 100);
@@ -158,6 +162,9 @@ bool IndiAstrolink4::initProperties()
 
     IUFillSwitch(&CompensateNowS[0], "COMP_NOW", "Compensate now", ISS_OFF);
     IUFillSwitchVector(&CompensateNowSP, CompensateNowS, 1, getDeviceName(), "COMP_NOW", "Compensate now", FOCUS_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
+
+    IUFillNumber(&FocusPosMMN[0], "FOC_POS_MM", "Position [mm]", "%.3f", 0.0, 200.0, 0.001, 0.0);
+    IUFillNumberVector(&FocusPosMMNP, FocusPosMMN, 1, getDeviceName(), "FOC_POS_MM", "Position [mm]", FOCUS_TAB, IP_RO, 60, IPS_IDLE);
 
     // power lines
     char portLabel[MAXINDILABEL];
@@ -248,6 +255,7 @@ bool IndiAstrolink4::updateProperties()
 
     if (isConnected())
     {
+    	defineNumber(&FocusPosMMNP);
         FI::updateProperties();
         WI::updateProperties();
         defineSwitch(&Power1SP);
@@ -260,6 +268,7 @@ bool IndiAstrolink4::updateProperties()
         defineNumber(&FocuserSettingsNP);
         defineSwitch(&FocuserModeSP);
         defineSwitch(&FocuserCompModeSP);
+        defineSwitch(&FocuserManualSP);
         defineNumber(&CompensationValueNP);
         defineSwitch(&CompensateNowSP);
         defineSwitch(&PowerDefaultOnSP);
@@ -291,13 +300,14 @@ bool IndiAstrolink4::updateProperties()
         deleteProperty(DCFocAbortSP.name);
         deleteProperty(BuzzerSP.name);
         deleteProperty(FocuserCompModeSP.name);
+        deleteProperty(FocuserManualSP.name);
+        deleteProperty(FocusPosMMNP.name);
         FI::updateProperties();
         WI::updateProperties();
     }
 
     return true;
 }
-
 
 bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n)
 {
@@ -337,8 +347,8 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
             PWMNP.s = (allOk) ? IPS_BUSY : IPS_ALERT;
             if(allOk)
                 IUUpdateNumber(&PWMNP, values, names, n);
-            IDSetNumber(&PWMNP, NULL);
-            IDSetSwitch(&AutoPWMSP, NULL);
+            IDSetNumber(&PWMNP, nullptr);
+            IDSetSwitch(&AutoPWMSP, nullptr);
             return true;
 		}
         
@@ -362,7 +372,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         	{
                 FocuserSettingsNP.s = IPS_BUSY;
                 IUUpdateNumber(&FocuserSettingsNP, values, names, n);
-                IDSetNumber(&FocuserSettingsNP, NULL);
+                IDSetNumber(&FocuserSettingsNP, nullptr);
                 LOG_INFO(values[FS_COMPENSATION] > 0 ? "Temperature compensation is enabled." : "Temperature compensation is disabled.");
                 return true;
         	}
@@ -382,7 +392,7 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         	{
                 OtherSettingsNP.s = IPS_BUSY;
                 IUUpdateNumber(&OtherSettingsNP, values, names, n);
-                IDSetNumber(&OtherSettingsNP, NULL);
+                IDSetNumber(&OtherSettingsNP, nullptr);
                 return true;
         	}
             OtherSettingsNP.s = IPS_ALERT;
@@ -393,14 +403,14 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         if(!strcmp(name, DCFocTimeNP.name))
         {
             IUUpdateNumber(&DCFocTimeNP, values, names, n);
-            IDSetNumber(&DCFocTimeNP, NULL);
+            IDSetNumber(&DCFocTimeNP, nullptr);
             saveConfig(true);
             sprintf(cmd, "G:%d:%.0f:%.0f", (DCFocDirS[0].s == ISS_ON) ? 1 : 0, DCFocTimeN[DC_PWM].value, DCFocTimeN[DC_PERIOD].value);
             if(sendCommand(cmd, res))
             {
                 DCFocAbortS[0].s = ISS_OFF;
                 DCFocAbortSP.s = IPS_OK;
-                IDSetSwitch(&DCFocAbortSP, NULL);
+                IDSetSwitch(&DCFocAbortSP, nullptr);
 
                 DCFocTimeNP.s = IPS_BUSY;
                 return true;
@@ -435,7 +445,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             if(allOk)
                 IUUpdateSwitch(&Power1SP, states, names, n);
             
-            IDSetSwitch(&Power1SP, NULL);
+            IDSetSwitch(&Power1SP, nullptr);
             return true;
 		}
         
@@ -448,7 +458,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             if(allOk)
                 IUUpdateSwitch(&Power2SP, states, names, n);
             
-            IDSetSwitch(&Power2SP, NULL);
+            IDSetSwitch(&Power2SP, nullptr);
             return true;
         }
         
@@ -461,7 +471,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             if(allOk)
                 IUUpdateSwitch(&Power3SP, states, names, n);
             
-            IDSetSwitch(&Power3SP, NULL);
+            IDSetSwitch(&Power3SP, nullptr);
             return true;
         }
 
@@ -474,7 +484,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
             if(allOk)
                 IUUpdateSwitch(&CompensateNowSP, states, names, n);
 
-            IDSetSwitch(&CompensateNowSP, NULL);
+            IDSetSwitch(&CompensateNowSP, nullptr);
             return true;
         }
 
@@ -520,7 +530,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         	{
                 PowerDefaultOnSP.s = IPS_BUSY;
                 IUUpdateSwitch(&PowerDefaultOnSP, states, names, n);
-                IDSetSwitch(&PowerDefaultOnSP, NULL);
+                IDSetSwitch(&PowerDefaultOnSP, nullptr);
                 return true;
         	}
             PowerDefaultOnSP.s = IPS_ALERT;
@@ -534,10 +544,24 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         	{
                 BuzzerSP.s = IPS_BUSY;
                 IUUpdateSwitch(&BuzzerSP, states, names, n);
-                IDSetSwitch(&BuzzerSP, NULL);
+                IDSetSwitch(&BuzzerSP, nullptr);
                 return true;
         	}
             BuzzerSP.s = IPS_ALERT;
+            return true;
+        }
+
+        // Manual mode
+        if(!strcmp(name, FocuserManualSP.name))
+        {
+            if(updateSettings("f", "F", 1, (states[0] == ISS_ON) ? "1" : "0"))
+        	{
+            	FocuserManualSP.s = IPS_BUSY;
+                IUUpdateSwitch(&FocuserManualSP, states, names, n);
+                IDSetSwitch(&FocuserManualSP, nullptr);
+                return true;
+        	}
+            FocuserManualSP.s = IPS_ALERT;
             return true;
         }
         
@@ -552,7 +576,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         	{
                 FocuserModeSP.s = IPS_BUSY;
                 IUUpdateSwitch(&FocuserModeSP, states, names, n);
-                IDSetSwitch(&FocuserModeSP, NULL);
+                IDSetSwitch(&FocuserModeSP, nullptr);
                 return true;
         	}
             FocuserModeSP.s = IPS_ALERT;
@@ -568,7 +592,7 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
         	{
         		FocuserCompModeSP.s = IPS_BUSY;
                 IUUpdateSwitch(&FocuserCompModeSP, states, names, n);
-                IDSetSwitch(&FocuserCompModeSP, NULL);
+                IDSetSwitch(&FocuserCompModeSP, nullptr);
                 return true;
         	}
         	FocuserCompModeSP.s = IPS_ALERT;
@@ -696,11 +720,6 @@ bool IndiAstrolink4::SetFocuserBacklashEnabled(bool enabled)
 //////////////////////////////////////////////////////////////////////
 /// Serial commands
 //////////////////////////////////////////////////////////////////////
-///
-/// q:1000:0:0.06:0: NAN:NAN:0.00:0:0.00:0:0:0:0:0:12.7:5.0:0.00:0.01:0:0:0:0
-/// u:100000:250:0:100:400:0:0:0:500:3:1:1:0:0:0:0:0:2148:443:
-/// n:1071:140:100:100:
-/// e:<cycle [s]>:<steps / 100>:<sensor>:<auto 0:1>:<trigger>
 bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 {
     int nbytes_read = 0, nbytes_written = 0, tty_rc = 0;
@@ -771,6 +790,7 @@ bool IndiAstrolink4::sensorRead()
 
         float focuserPosition = std::stod(result[Q_STEPPER_POS]);
         FocusAbsPosN[0].value = focuserPosition;
+        FocusPosMMN[0].value = focuserPosition * FocuserSettingsN[FS_STEP_SIZE].value / 1000.0;
         float stepsToGo = std::stod(result[Q_STEPS_TO_GO]);
         if(stepsToGo <= 0)
         {
@@ -782,6 +802,7 @@ bool IndiAstrolink4::sensorRead()
             FocusAbsPosNP.s = FocusRelPosNP.s = IPS_OK;
             IDSetNumber(&FocusRelPosNP, nullptr);
         }
+        IDSetNumber(&FocusPosMMNP, nullptr);
         IDSetNumber(&FocusAbsPosNP, nullptr);
         PowerDataN[POW_ITOT].value = std::stod(result[Q_CURRENT]);
 
@@ -793,7 +814,7 @@ bool IndiAstrolink4::sensorRead()
                 setParameterValue("WEATHER_HUMIDITY", std::stod(result[Q_SENS1_HUM]));
                 setParameterValue("WEATHER_DEWPOINT", std::stod(result[Q_SENS1_DEW]));
                 ParametersNP.s = IPS_OK;
-                IDSetNumber(&ParametersNP, NULL);
+                IDSetNumber(&ParametersNP, nullptr);
             }
             else
             {
@@ -804,7 +825,7 @@ bool IndiAstrolink4::sensorRead()
             {
                 Sensor2N[0].value = std::stod(result[Q_SENS2_TEMP]);
                 Sensor2NP.s = IPS_OK;
-                IDSetNumber(&Sensor2NP, NULL);
+                IDSetNumber(&Sensor2NP, nullptr);
             }
             else
             {
@@ -814,20 +835,20 @@ bool IndiAstrolink4::sensorRead()
             PWMN[0].value = std::stod(result[Q_PWM1]);
             PWMN[1].value = std::stod(result[Q_PWM2]);
             PWMNP.s = IPS_OK;
-            IDSetNumber(&PWMNP, NULL);
+            IDSetNumber(&PWMNP, nullptr);
             
             bool dcMotorMoving = (std::stod(result[Q_DC_MOVE]) > 0);
             if(dcMotorMoving)
             {
                 DCFocTimeNP.s = IPS_BUSY;
-                IDSetNumber(&DCFocTimeNP, NULL);
+                IDSetNumber(&DCFocTimeNP, nullptr);
             }
             else if (DCFocTimeNP.s == IPS_BUSY)
             {
                 DCFocTimeNP.s = IPS_OK;
                 DCFocAbortSP.s = IPS_IDLE;
-                IDSetNumber(&DCFocTimeNP, NULL);
-                IDSetSwitch(&DCFocAbortSP, NULL);
+                IDSetNumber(&DCFocTimeNP, nullptr);
+                IDSetSwitch(&DCFocAbortSP, nullptr);
             }
             
             if(Power1SP.s != IPS_OK || Power2SP.s != IPS_OK || Power3SP.s != IPS_OK)
@@ -835,15 +856,15 @@ bool IndiAstrolink4::sensorRead()
                 Power1S[0].s = (std::stod(result[Q_OUT1]) > 0) ? ISS_ON : ISS_OFF;
                 Power1S[1].s = (std::stod(result[Q_OUT1]) == 0) ? ISS_ON : ISS_OFF;
                 Power1SP.s = IPS_OK;
-                IDSetSwitch(&Power1SP, NULL);
+                IDSetSwitch(&Power1SP, nullptr);
                 Power2S[0].s = (std::stod(result[Q_OUT2]) > 0) ? ISS_ON : ISS_OFF;
                 Power2S[1].s = (std::stod(result[Q_OUT2]) == 0) ? ISS_ON : ISS_OFF;
                 Power2SP.s = IPS_OK;
-                IDSetSwitch(&Power2SP, NULL);
+                IDSetSwitch(&Power2SP, nullptr);
                 Power3S[0].s = (std::stod(result[Q_OUT3]) > 0) ? ISS_ON : ISS_OFF;
                 Power3S[1].s = (std::stod(result[Q_OUT3]) == 0) ? ISS_ON : ISS_OFF;
                 Power3SP.s = IPS_OK;
-                IDSetSwitch(&Power3SP, NULL);
+                IDSetSwitch(&Power3SP, nullptr);
             }
             
             float compensationVal = std::stod(result[Q_COMP_DIFF]);
@@ -852,8 +873,8 @@ bool IndiAstrolink4::sensorRead()
                 CompensationValueN[0].value = compensationVal;
                 CompensateNowSP.s = CompensationValueNP.s = (CompensationValueN[0].value > 0) ? IPS_OK : IPS_IDLE;
                 CompensateNowS[0].s = ISS_OFF;
-                IDSetNumber(&CompensationValueNP, NULL);
-                IDSetSwitch(&CompensateNowSP, NULL);
+                IDSetNumber(&CompensationValueNP, nullptr);
+                IDSetSwitch(&CompensateNowSP, nullptr);
             }
             
             PowerDataN[POW_VIN].value = std::stod(result[Q_VIN]);
@@ -870,7 +891,7 @@ bool IndiAstrolink4::sensorRead()
         }
 
         PowerDataNP.s=IPS_OK;
-        IDSetNumber(&PowerDataNP, NULL);
+        IDSetNumber(&PowerDataNP, nullptr);
 
     }
 
@@ -886,19 +907,19 @@ bool IndiAstrolink4::sensorRead()
             if(!strcmp("1", result[U_STEPPER_MODE].c_str())) FocuserModeS[FS_MODE_BI].s = ISS_ON;
             if(!strcmp("2", result[U_STEPPER_MODE].c_str())) FocuserModeS[FS_MODE_MICRO].s = ISS_ON;
             FocuserModeSP.s = IPS_OK;
-            IDSetSwitch(&FocuserModeSP, NULL);
+            IDSetSwitch(&FocuserModeSP, nullptr);
             
             PowerDefaultOnS[0].s = (std::stod(result[U_OUT1_DEF]) > 0) ? ISS_ON : ISS_OFF;
             PowerDefaultOnS[1].s = (std::stod(result[U_OUT2_DEF]) > 0) ? ISS_ON : ISS_OFF;
             PowerDefaultOnS[2].s = (std::stod(result[U_OUT3_DEF]) > 0) ? ISS_ON : ISS_OFF;
             PowerDefaultOnSP.s = IPS_OK;
-            IDSetSwitch(&PowerDefaultOnSP, NULL);
+            IDSetSwitch(&PowerDefaultOnSP, nullptr);
             
             FocuserSettingsN[FS_MAX_POS].value = std::stod(result[U_MAX_POS]);
             FocuserSettingsN[FS_SPEED].value = std::stod(result[U_SPEED]);
             FocuserSettingsN[FS_STEP_SIZE].value = std::stod(result[U_STEPSIZE]) / 100.0;
             FocuserSettingsNP.s = IPS_OK;
-            IDSetNumber(&FocuserSettingsNP, NULL);
+            IDSetNumber(&FocuserSettingsNP, nullptr);
         }
 
         if(sendCommand("j", res))
@@ -906,7 +927,7 @@ bool IndiAstrolink4::sensorRead()
             std::vector<std::string> result = split(res, ":");
             BuzzerS[0].s = (std::stod(result[1]) > 0) ? ISS_ON : ISS_OFF;
             BuzzerSP.s = IPS_OK;
-            IDSetSwitch(&BuzzerSP, NULL);
+            IDSetSwitch(&BuzzerSP, nullptr);
         }
 
         if (sendCommand("e", res))
@@ -915,12 +936,24 @@ bool IndiAstrolink4::sensorRead()
             FocuserSettingsN[FS_COMPENSATION].value = std::stod(result[E_COMP_STEPS]) / 100.0;
             FocuserSettingsN[FS_COMP_THRESHOLD].value = std::stod(result[E_COMP_TRGR]);
             FocuserSettingsNP.s = IPS_OK;
-            IDSetNumber(&FocuserSettingsNP, NULL);
+            IDSetNumber(&FocuserSettingsNP, nullptr);
 
             FocuserCompModeS[FS_COMP_MANUAL].s = (std::stod(result[E_COMP_AUTO]) == 0) ? ISS_ON : ISS_OFF;
             FocuserCompModeS[FS_COMP_AUTO].s = (std::stod(result[E_COMP_AUTO]) > 0) ? ISS_ON : ISS_OFF;
             FocuserCompModeSP.s = IPS_OK;
-            IDSetSwitch(&FocuserCompModeSP, NULL);
+            IDSetSwitch(&FocuserCompModeSP, nullptr);
+        }
+    }
+
+    if(FocuserManualSP.s != IPS_OK)
+    {
+        if (sendCommand("f", res))
+        {
+            std::vector<std::string> result = split(res, ":");
+            FocuserManualS[FS_MANUAL_OFF].s = (std::stod(result[1]) == 0) ? ISS_ON : ISS_OFF;
+            FocuserManualS[FS_MANUAL_ON].s = (std::stod(result[1]) > 0) ? ISS_ON : ISS_OFF;
+            FocuserManualSP.s = IPS_OK;
+            IDSetSwitch(&FocuserManualSP, nullptr);
         }
     }
 
@@ -934,7 +967,7 @@ bool IndiAstrolink4::sensorRead()
             OtherSettingsN[SET_OVER_VOLT].value = std::stod(result[N_OVER_VOLT]) / 10.0;
             OtherSettingsN[SET_OVER_AMP].value = std::stod(result[N_OVER_AMP]) / 10.0;
             OtherSettingsNP.s = IPS_OK;
-            IDSetNumber(&OtherSettingsNP, NULL);
+            IDSetNumber(&OtherSettingsNP, nullptr);
         }
     }
 
