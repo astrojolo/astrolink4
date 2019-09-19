@@ -19,9 +19,6 @@
 
 #include "indicom.h"
 
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 6
-
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
 
@@ -60,45 +57,12 @@ void ISSnoopDevice (XMLEle *root)
 //////////////////////////////////////////////////////////////////////
 IndiAstrolink4::IndiAstrolink4() : FI(this), WI(this)
 {
-	setVersion(VERSION_MAJOR,VERSION_MINOR);
+	setVersion(0, 6);
 }
 
 const char * IndiAstrolink4::getDefaultName()
 {
     return (char *)"AstroLink 4";
-}
-
-//////////////////////////////////////////////////////////////////////
-/// Communication
-//////////////////////////////////////////////////////////////////////
-bool IndiAstrolink4::Handshake()
-{
-    PortFD = serialConnection->getPortFD();
-
-    char res[ASTROLINK4_LEN] = {0};
-    if(sendCommand("#", res))
-    {
-        if(strncmp(res, "#:AstroLink4mini", 15) != 0)
-        {
-            LOG_ERROR("Device not recognized.");
-            return false;
-        }
-        else
-        {
-            SetTimer(POLLMS);
-            return true;
-        }
-    }
-    return false;
-}
-
-void IndiAstrolink4::TimerHit()
-{
-	if(isConnected())
-	{
-        sensorRead();
-        SetTimer(POLLMS);
-    }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -613,14 +577,32 @@ bool IndiAstrolink4::setAutoPWM()
 //////////////////////////////////////////////////////////////////////
 IPState IndiAstrolink4::MoveAbsFocuser(uint32_t targetTicks)
 {
+	int32_t backlash = 0;
+	if(backlashEnabled)
+	{
+		if((backlashSteps > 0) == (targetTicks > FocusAbsPosN[0].value))
+			backlash = backlashSteps;
+		if((targetTicks + backlash) < 0 || (targetTicks + backlash) > FocusMaxPosN[0].value)
+		{
+			backlash = 0;
+		}
+		requireBacklashReturn = (backlash > 0);
+	}
+
     char cmd[ASTROLINK4_LEN] = {0}, res[ASTROLINK4_LEN] = {0};
-    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks);
+    snprintf(cmd, ASTROLINK4_LEN, "R:0:%u", targetTicks + backlash);
     return (sendCommand(cmd, res)) ? IPS_BUSY : IPS_ALERT;
 }
 
 IPState IndiAstrolink4::MoveRelFocuser(FocusDirection dir, uint32_t ticks)
 {
     return MoveAbsFocuser(dir == FOCUS_INWARD ? FocusAbsPosN[0].value - ticks : FocusAbsPosN[0].value + ticks);
+}
+
+bool IndiAstrolink4::SetFocuserMaxPosition(uint32_t ticks)
+{
+	std::string s = std::to_string(ticks);
+    return updateSettings("u", "U", 0, s.c_str());
 }
 
 bool IndiAstrolink4::AbortFocuser()
@@ -651,6 +633,39 @@ bool IndiAstrolink4::SetFocuserBacklashEnabled(bool enabled)
 {
     backlashEnabled = enabled;
     return true;
+}
+
+//////////////////////////////////////////////////////////////////////
+/// Communication
+//////////////////////////////////////////////////////////////////////
+bool IndiAstrolink4::Handshake()
+{
+    PortFD = serialConnection->getPortFD();
+
+    char res[ASTROLINK4_LEN] = {0};
+    if(sendCommand("#", res))
+    {
+        if(strncmp(res, "#:AstroLink4mini", 15) != 0)
+        {
+            LOG_ERROR("Device not recognized.");
+            return false;
+        }
+        else
+        {
+            SetTimer(POLLMS);
+            return true;
+        }
+    }
+    return false;
+}
+
+void IndiAstrolink4::TimerHit()
+{
+	if(isConnected())
+	{
+        sensorRead();
+        SetTimer(POLLMS);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -720,7 +735,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 }
 
 //////////////////////////////////////////////////////////////////////
-/// Sensors
+/// Sensor read
 //////////////////////////////////////////////////////////////////////
 bool IndiAstrolink4::sensorRead()
 {
@@ -927,7 +942,7 @@ std::string IndiAstrolink4::doubleToStr(double val)
     return ret;
 }
 
-bool IndiAstrolink4::updateSettings(char * getCom, char * setCom, int index, char * value)
+bool IndiAstrolink4::updateSettings(char * getCom, char * setCom, int index, const char * value)
 {
 	std::map<int, std::string> values;
 	values[index] = value;

@@ -67,6 +67,7 @@ protected:
 
     virtual bool SetFocuserBacklash(int32_t steps) override;
     virtual bool SetFocuserBacklashEnabled(bool enabled) override;
+    virtual bool SetFocuserMaxPosition(uint32_t ticks) override;
 
     // Weather Overrides
     virtual IPState updateWeather() override
@@ -79,13 +80,12 @@ private:
 	virtual bool Handshake();
 	int PortFD = -1;
     Connection::Serial *serialConnection { nullptr };
-    bool updateSettings(char * getCom, char * setCom, int index, char * value);
+    bool updateSettings(char * getCom, char * setCom, int index, const char * value);
     bool updateSettings(char * getCom, char * setCom, std::map<int, std::string> values);
     std::vector<std::string> split(const std::string &input, const std::string &regex);
     std::string doubleToStr(double val);
     bool sensorRead();
     bool setAutoPWM();
-    int32_t calculateBacklash(uint32_t targetTicks);
     char stopChar { 0xA };	// new line
     bool backlashEnabled = false;
     int32_t backlashSteps = 0;
