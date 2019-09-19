@@ -145,6 +145,9 @@ private:
     int32_t backlashSteps = 0;
     bool requireBacklashReturn = false;
     
+    IText PowerControlsLabelsT[3] = {};
+    ITextVectorProperty PowerControlsLabelsTP;
+
 	ISwitch Power1S[2];
 	ISwitchVectorProperty Power1SP;
 	ISwitch Power2S[2];
@@ -175,9 +178,6 @@ private:
     INumberVectorProperty CompensationValueNP;
     ISwitch CompensateNowS[1];
     ISwitchVectorProperty CompensateNowSP;
-    
-    IText PowerLabelsT[3] = {};
-    ITextVectorProperty PowerLabelsTP;
 
     INumber FocuserSettingsN[4];
     INumberVectorProperty FocuserSettingsNP;

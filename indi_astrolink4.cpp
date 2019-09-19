@@ -165,30 +165,34 @@ bool IndiAstrolink4::initProperties()
     IUFillNumberVector(&FocusPosMMNP, FocusPosMMN, 1, getDeviceName(), "FOC_POS_MM", "Position [mm]", FOCUS_TAB, IP_RO, 60, IPS_IDLE);
 
     // power lines
+    // Power Labels
+    IUFillText(&PowerControlsLabelsT[0], "POWER_LABEL_1", "Port 1", "Port 1");
+    IUFillText(&PowerControlsLabelsT[1], "POWER_LABEL_2", "Port 2", "Port 2");
+    IUFillText(&PowerControlsLabelsT[2], "POWER_LABEL_3", "Port 3", "Port 3");
+    IUFillTextVector(&PowerControlsLabelsTP, PowerControlsLabelsT, 4, getDeviceName(), "POWER_CONTROL_LABEL", "Power Labels", POWER_TAB, IP_WO, 60, IPS_IDLE);
+
     char portLabel[MAXINDILABEL];
 
     memset(portLabel, 0, MAXINDILABEL);
-    int portRC = IUGetConfigText(getDeviceName(), PowerLabelsTP.name, PowerLabelsT[0].name, portLabel, MAXINDILABEL);
+    int portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[0].name, portLabel, MAXINDILABEL);
+
     IUFillSwitch(&Power1S[0], "PWR1BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power1S[1], "PWR1BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", portRC == -1 ? "12V out 1" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", portRC == -1 ? "Port 1" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     memset(portLabel, 0, MAXINDILABEL);
-    portRC = IUGetConfigText(getDeviceName(), PowerLabelsTP.name, PowerLabelsT[1].name, portLabel, MAXINDILABEL);
+    portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[1].name, portLabel, MAXINDILABEL);
+
     IUFillSwitch(&Power2S[0], "PWR2BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power2S[1], "PWR2BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "DC2", portRC == -1 ? "12V out 2" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "DC2", portRC == -1 ? "Port 2" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     memset(portLabel, 0, MAXINDILABEL);
-    portRC = IUGetConfigText(getDeviceName(), PowerLabelsTP.name, PowerLabelsT[2].name, portLabel, MAXINDILABEL);
+    portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[2].name, portLabel, MAXINDILABEL);
+
     IUFillSwitch(&Power3S[0], "PWR3BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "12V out 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
-
-    IUFillText(&PowerLabelsT[0], "POWER_LABEL_1", "12V out 1", "12V out 1");
-    IUFillText(&PowerLabelsT[1], "POWER_LABEL_2", "12V out 2", "12V out 2");
-    IUFillText(&PowerLabelsT[2], "POWER_LABEL_3", "12V out 3", "12V out 3");
-    IUFillTextVector(&PowerLabelsTP, PowerLabelsT, 3, getDeviceName(), "POWER_CONTROL_LABEL", "12V outputs labels", SETTINGS_TAB, IP_RW, 60, IPS_IDLE);
+    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "Port 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     IUFillSwitch(&PowerDefaultOnS[0], "POW_DEF_ON1", "DC1", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[1], "POW_DEF_ON2", "DC2", ISS_OFF);
@@ -274,7 +278,7 @@ bool IndiAstrolink4::updateProperties()
         defineSwitch(&DCFocDirSP);
         defineNumber(&DCFocTimeNP);
         defineSwitch(&DCFocAbortSP);
-        defineText(&PowerLabelsTP);
+        defineText(&PowerControlsLabelsTP);
         defineSwitch(&BuzzerSP);
     }
     else
@@ -286,7 +290,6 @@ bool IndiAstrolink4::updateProperties()
 		deleteProperty(Sensor2NP.name);
 		deleteProperty(PWMNP.name);
         deleteProperty(PowerDataNP.name);
-        deleteProperty(PowerLabelsTP.name);
         deleteProperty(FocuserSettingsNP.name);
         deleteProperty(FocuserModeSP.name);
         deleteProperty(CompensateNowSP.name);
@@ -300,6 +303,7 @@ bool IndiAstrolink4::updateProperties()
         deleteProperty(FocuserCompModeSP.name);
         deleteProperty(FocuserManualSP.name);
         deleteProperty(FocusPosMMNP.name);
+        deleteProperty(PowerControlsLabelsTP.name);
         FI::updateProperties();
         WI::updateProperties();
     }
@@ -610,13 +614,14 @@ bool IndiAstrolink4::ISNewText(const char * dev, const char * name, char * texts
     if (dev && !strcmp(dev, getDeviceName()))
     {
         // Power Labels
-        if (!strcmp(name, PowerLabelsTP.name))
+        // Power Labels
+        if (!strcmp(name, PowerControlsLabelsTP.name))
         {
-            IUUpdateText(&PowerLabelsTP, texts, names, n);
-            PowerLabelsTP.s = IPS_OK;
+            IUUpdateText(&PowerControlsLabelsTP, texts, names, n);
+            PowerControlsLabelsTP.s = IPS_OK;
             LOG_INFO("Power port labels saved. Driver must be restarted for the labels to take effect.");
-            saveConfig(true);
-            IDSetText(&PowerLabelsTP, nullptr);
+            saveConfig();
+            IDSetText(&PowerControlsLabelsTP, nullptr);
             return true;
         }
     }
@@ -629,9 +634,9 @@ bool IndiAstrolink4::saveConfigItems(FILE *fp)
     INDI::DefaultDevice::saveConfigItems(fp);
     FI::saveConfigItems(fp);
     
-    IUSaveConfigText(fp, &PowerLabelsTP);
     IUSaveConfigNumber(fp, &DCFocTimeNP);
     IUSaveConfigSwitch(fp, &DCFocDirSP);
+    IUSaveConfigText(fp, &PowerControlsLabelsTP);
     return true;
 }
 
