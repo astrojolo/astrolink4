@@ -145,7 +145,7 @@ private:
     int32_t backlashSteps = 0;
     bool requireBacklashReturn = false;
     
-    IText PowerControlsLabelsT[3] = {};
+    IText PowerControlsLabelsT[3];
     ITextVectorProperty PowerControlsLabelsTP;
 
 	ISwitch Power1S[2];

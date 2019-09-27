@@ -165,34 +165,33 @@ bool IndiAstrolink4::initProperties()
     IUFillNumberVector(&FocusPosMMNP, FocusPosMMN, 1, getDeviceName(), "FOC_POS_MM", "Position [mm]", FOCUS_TAB, IP_RO, 60, IPS_IDLE);
 
     // power lines
-    // Power Labels
     IUFillText(&PowerControlsLabelsT[0], "POWER_LABEL_1", "Port 1", "Port 1");
     IUFillText(&PowerControlsLabelsT[1], "POWER_LABEL_2", "Port 2", "Port 2");
     IUFillText(&PowerControlsLabelsT[2], "POWER_LABEL_3", "Port 3", "Port 3");
-    IUFillTextVector(&PowerControlsLabelsTP, PowerControlsLabelsT, 4, getDeviceName(), "POWER_CONTROL_LABEL", "Power Labels", POWER_TAB, IP_WO, 60, IPS_IDLE);
+    IUFillTextVector(&PowerControlsLabelsTP, PowerControlsLabelsT, 3, getDeviceName(), "POWER_CONTROL_LABEL", "Power Labels", POWER_TAB, IP_WO, 60, IPS_IDLE);
 
-    char portLabel[MAXINDILABEL];
+    char portLabel1[MAXINDILABEL], portLabel2[MAXINDILABEL], portLabel3[MAXINDILABEL];
 
-    memset(portLabel, 0, MAXINDILABEL);
-    int portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[0].name, portLabel, MAXINDILABEL);
+    memset(portLabel1, 0, MAXINDILABEL);
+    int portRC1 = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[0].name, portLabel1, MAXINDILABEL);
 
     IUFillSwitch(&Power1S[0], "PWR1BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power1S[1], "PWR1BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", portRC == -1 ? "Port 1" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power1SP, Power1S, 2, getDeviceName(), "DC1", portRC1 == -1 ? "Port 1" : portLabel1, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
-    memset(portLabel, 0, MAXINDILABEL);
-    portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[1].name, portLabel, MAXINDILABEL);
+    memset(portLabel2, 0, MAXINDILABEL);
+    int portRC2 = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[1].name, portLabel2, MAXINDILABEL);
 
     IUFillSwitch(&Power2S[0], "PWR2BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power2S[1], "PWR2BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "DC2", portRC == -1 ? "Port 2" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power2SP, Power2S, 2, getDeviceName(), "DC2", portRC2 == -1 ? "Port 2" : portLabel2, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
-    memset(portLabel, 0, MAXINDILABEL);
-    portRC = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[2].name, portLabel, MAXINDILABEL);
+    memset(portLabel3, 0, MAXINDILABEL);
+    int portRC3 = IUGetConfigText(getDeviceName(), PowerControlsLabelsTP.name, PowerControlsLabelsT[2].name, portLabel3, MAXINDILABEL);
 
     IUFillSwitch(&Power3S[0], "PWR3BTN_ON", "ON", ISS_OFF);
     IUFillSwitch(&Power3S[1], "PWR3BTN_OFF", "OFF", ISS_ON);
-    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC == -1 ? "Port 3" : portLabel, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
+    IUFillSwitchVector(&Power3SP, Power3S, 2, getDeviceName(), "DC3", portRC3 == -1 ? "Port 3" : portLabel3, POWER_TAB, IP_RW, ISR_1OFMANY, 0, IPS_IDLE);
 
     IUFillSwitch(&PowerDefaultOnS[0], "POW_DEF_ON1", "DC1", ISS_OFF);
     IUFillSwitch(&PowerDefaultOnS[1], "POW_DEF_ON2", "DC2", ISS_OFF);
@@ -614,7 +613,6 @@ bool IndiAstrolink4::ISNewText(const char * dev, const char * name, char * texts
     if (dev && !strcmp(dev, getDeviceName()))
     {
         // Power Labels
-        // Power Labels
         if (!strcmp(name, PowerControlsLabelsTP.name))
         {
             IUUpdateText(&PowerControlsLabelsTP, texts, names, n);
@@ -766,7 +764,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
     {
         tcflush(PortFD, TCIOFLUSH);
         sprintf(command, "%s\n", cmd);
-        if(strcmp(cmd, "q") != 0) LOG_INFO(command);
+        LOGF_DEBUG("CMD %s", command);
         if ( (tty_rc = tty_write_string(PortFD, command, &nbytes_written)) != TTY_OK)
             return false;
 
@@ -781,7 +779,7 @@ bool IndiAstrolink4::sendCommand(const char * cmd, char * res)
 
         tcflush(PortFD, TCIOFLUSH);
         res[nbytes_read - 1] = '\0';
-        if(strcmp(cmd, "q") != 0) LOG_INFO(res);
+        LOGF_DEBUG("RES %s", res);
 
         if (tty_rc != TTY_OK)
         {
