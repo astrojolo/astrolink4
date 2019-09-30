@@ -36,15 +36,15 @@
 #include <indiweatherinterface.h>
 #include <connectionplugins/connectionserial.h>
 
-#define Q_STEPPER_POS		1
-#define Q_STEPS_TO_GO		2
+#define Q_STEPPER_POS                   1
+#define Q_STEPS_TO_GO                   2
 #define Q_CURRENT			3
-#define Q_SENS1_TYPE		4
-#define Q_SENS1_TEMP		5
+#define Q_SENS1_TYPE                    4
+#define Q_SENS1_TEMP                    5
 #define Q_SENS1_HUM			6
 #define Q_SENS1_DEW			7
-#define Q_SENS2_TYPE		8
-#define Q_SENS2_TEMP		9
+#define Q_SENS2_TYPE                    8
+#define Q_SENS2_TEMP                    9
 #define Q_PWM1				10
 #define Q_PWM2				11
 #define Q_OUT1				12
@@ -65,25 +65,25 @@
 #define U_PWMRUN			4
 #define U_ACC				5
 #define U_REVERSED			6
-#define U_STEPPER_MODE		7
+#define U_STEPPER_MODE                  7
 #define U_COMPSENS			8
 #define U_STEPSIZE			9
 #define U_PWMPRESC			10
 #define U_STEPPRESC			11
-#define U_BUZ_ENABLED		12
+#define U_BUZ_ENABLED                   12
 #define U_HUM_SENS			13
-#define U_DC_REVERSED		14
+#define U_DC_REVERSED                   14
 #define U_OUT1_DEF			15
 #define U_OUT2_DEF			16
 #define U_OUT3_DEF			17
 
-#define E_COMP_CYCLE		1
-#define E_COMP_STEPS		2
-#define E_COMP_SENSR		3
+#define E_COMP_CYCLE                    1
+#define E_COMP_STEPS                    2
+#define E_COMP_SENSR                    3
 #define E_COMP_AUTO			4
 #define E_COMP_TRGR			5
 
-#define N_AREF_COEFF		1
+#define N_AREF_COEFF                    1
 #define N_OVER_VOLT			2
 #define N_OVER_AMP			3
 #define N_OVER_TIME			4
@@ -98,17 +98,17 @@ class IndiAstrolink4 : public INDI::DefaultDevice, public INDI::FocuserInterface
 
 public:
     IndiAstrolink4();
-	virtual bool initProperties();
-	virtual bool updateProperties();
+    virtual bool initProperties();
+    virtual bool updateProperties();
 	
-	virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
-	virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
+    virtual bool ISNewNumber (const char *dev, const char *name, double values[], char *names[], int n);
+    virtual bool ISNewSwitch (const char *dev, const char *name, ISState *states, char *names[], int n);
     virtual bool ISNewText(const char * dev, const char * name, char * texts[], char * names[], int n);
 	
 protected:
-	virtual const char *getDefaultName();
-	virtual void TimerHit();
-	virtual bool saveConfigItems(FILE *fp);
+    virtual const char *getDefaultName();
+    virtual void TimerHit();
+    virtual bool saveConfigItems(FILE *fp);
     virtual bool sendCommand(const char * cmd, char * res);
 
     // Focuser Overrides
@@ -130,8 +130,8 @@ protected:
 
 	
 private:
-	virtual bool Handshake();
-	int PortFD = -1;
+    virtual bool Handshake();
+    int PortFD = -1;
     Connection::Serial *serialConnection { nullptr };
     bool updateSettings(const char * getCom, const char * setCom, int index, const char * value);
     bool updateSettings(const char * getCom, const char * setCom, std::map<int, std::string> values);
@@ -148,18 +148,18 @@ private:
     IText PowerControlsLabelsT[3];
     ITextVectorProperty PowerControlsLabelsTP;
 
-	ISwitch Power1S[2];
-	ISwitchVectorProperty Power1SP;
-	ISwitch Power2S[2];
-	ISwitchVectorProperty Power2SP;
-	ISwitch Power3S[2];
-	ISwitchVectorProperty Power3SP;
-    
-	INumber Sensor2N[1];
-	INumberVectorProperty Sensor2NP;
-    
-	INumber PWMN[2];
-	INumberVectorProperty PWMNP;
+    ISwitch Power1S[2];
+    ISwitchVectorProperty Power1SP;
+    ISwitch Power2S[2];
+    ISwitchVectorProperty Power2SP;
+    ISwitch Power3S[2];
+    ISwitchVectorProperty Power3SP;
+
+    INumber Sensor2N[1];
+    INumberVectorProperty Sensor2NP;
+
+    INumber PWMN[2];
+    INumberVectorProperty PWMNP;
 
     ISwitch AutoPWMS[2];
     ISwitchVectorProperty AutoPWMSP;
@@ -167,9 +167,9 @@ private:
     INumber PowerDataN[5];
     INumberVectorProperty PowerDataNP;
     enum
-	{
-    	POW_VIN, POW_VREG, POW_ITOT, POW_AH, POW_WH
-	};
+    {
+    POW_VIN, POW_VREG, POW_ITOT, POW_AH, POW_WH
+    };
 
     INumber FocusPosMMN[1];
     INumberVectorProperty FocusPosMMNP;
@@ -195,16 +195,16 @@ private:
     ISwitch FocuserCompModeS[2];
     ISwitchVectorProperty FocuserCompModeSP;
     enum
-	{
-    	FS_COMP_AUTO, FS_COMP_MANUAL
-	};
+    {
+    FS_COMP_AUTO, FS_COMP_MANUAL
+    };
     
     ISwitch FocuserManualS[2];
     ISwitchVectorProperty FocuserManualSP;
     enum
-	{
-    	FS_MANUAL_ON, FS_MANUAL_OFF
-	};
+    {
+    FS_MANUAL_ON, FS_MANUAL_OFF
+    };
 
     ISwitch PowerDefaultOnS[3];
     ISwitchVectorProperty PowerDefaultOnSP;
@@ -213,7 +213,7 @@ private:
     INumberVectorProperty OtherSettingsNP;
     enum
     {
-            SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
+        SET_AREF_COEFF, SET_OVER_TIME, SET_OVER_VOLT, SET_OVER_AMP
     };
     
     INumber DCFocTimeN[2];
@@ -232,8 +232,8 @@ private:
     ISwitch BuzzerS[1];
     ISwitchVectorProperty BuzzerSP;
     
-	static constexpr const char *POWER_TAB {"Power"};
-	static constexpr const char *ENVIRONMENT_TAB {"Environment"};
+    static constexpr const char *POWER_TAB {"Power"};
+    static constexpr const char *ENVIRONMENT_TAB {"Environment"};
     static constexpr const char *SETTINGS_TAB {"Settings"};
     static constexpr const char *DCFOCUSER_TAB {"DC Focuser"};
 };

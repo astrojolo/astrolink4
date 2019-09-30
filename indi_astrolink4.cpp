@@ -36,7 +36,7 @@ void ISGetProperties(const char *dev)
 }
 void ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int num)
 {
-	indiAstrolink4->ISNewSwitch(dev, name, states, names, num);
+    indiAstrolink4->ISNewSwitch(dev, name, states, names, num);
 }
 void ISNewText(	const char *dev, const char *name, char *texts[], char *names[], int num)
 {
@@ -44,7 +44,7 @@ void ISNewText(	const char *dev, const char *name, char *texts[], char *names[],
 }
 void ISNewNumber(const char *dev, const char *name, double values[], char *names[], int num)
 {
-	indiAstrolink4->ISNewNumber(dev, name, values, names, num);
+    indiAstrolink4->ISNewNumber(dev, name, values, names, num);
 }
 void ISNewBLOB (const char *dev, const char *name, int sizes[], int blobsizes[], char *blobs[], char *formats[], char *names[], int num)
 {
@@ -60,7 +60,7 @@ void ISSnoopDevice (XMLEle *root)
 //////////////////////////////////////////////////////////////////////
 IndiAstrolink4::IndiAstrolink4() : FI(this), WI(this)
 {
-	setVersion(VERSION_MAJOR,VERSION_MINOR);
+    setVersion(VERSION_MAJOR,VERSION_MINOR);
 }
 
 const char * IndiAstrolink4::getDefaultName()
@@ -94,8 +94,8 @@ bool IndiAstrolink4::Handshake()
 
 void IndiAstrolink4::TimerHit()
 {
-	if(isConnected())
-	{
+    if(isConnected())
+    {
         sensorRead();
         SetTimer(POLLMS);
     }
@@ -260,11 +260,11 @@ bool IndiAstrolink4::updateProperties()
         FI::updateProperties();
         WI::updateProperties();
         defineSwitch(&Power1SP);
-		defineSwitch(&Power2SP);
-		defineSwitch(&Power3SP);
+        defineSwitch(&Power2SP);
+        defineSwitch(&Power3SP);
         defineSwitch(&AutoPWMSP);
-		defineNumber(&Sensor2NP);
-		defineNumber(&PWMNP);
+        defineNumber(&Sensor2NP);
+        defineNumber(&PWMNP);
         defineNumber(&PowerDataNP);
         defineNumber(&FocuserSettingsNP);
         defineSwitch(&FocuserModeSP);
@@ -282,12 +282,12 @@ bool IndiAstrolink4::updateProperties()
     }
     else
     {
-		deleteProperty(Power1SP.name);
-		deleteProperty(Power2SP.name);
-		deleteProperty(Power3SP.name);
+        deleteProperty(Power1SP.name);
+        deleteProperty(Power2SP.name);
+        deleteProperty(Power3SP.name);
         deleteProperty(AutoPWMSP.name);
-		deleteProperty(Sensor2NP.name);
-		deleteProperty(PWMNP.name);
+        deleteProperty(Sensor2NP.name);
+        deleteProperty(PWMNP.name);
         deleteProperty(PowerDataNP.name);
         deleteProperty(FocuserSettingsNP.name);
         deleteProperty(FocuserModeSP.name);
@@ -317,9 +317,9 @@ bool IndiAstrolink4::ISNewNumber (const char *dev, const char *name, double valu
         char cmd[ASTROLINK4_LEN] = {0};
         char res[ASTROLINK4_LEN] = {0};
         
-		// handle PWM
-		if (!strcmp(name, PWMNP.name))
-		{
+        // handle PWM
+        if (!strcmp(name, PWMNP.name))
+        {
             bool allOk = true;
             if(PWMN[0].value != values[0])
             {
