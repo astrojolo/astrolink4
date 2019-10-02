@@ -36,15 +36,15 @@
 #include <indiweatherinterface.h>
 #include <connectionplugins/connectionserial.h>
 
-#define Q_STEPPER_POS                   1
-#define Q_STEPS_TO_GO                   2
+#define Q_STEPPER_POS		1
+#define Q_STEPS_TO_GO		2
 #define Q_CURRENT			3
-#define Q_SENS1_TYPE                    4
-#define Q_SENS1_TEMP                    5
+#define Q_SENS1_TYPE		4
+#define Q_SENS1_TEMP		5
 #define Q_SENS1_HUM			6
 #define Q_SENS1_DEW			7
-#define Q_SENS2_TYPE                    8
-#define Q_SENS2_TEMP                    9
+#define Q_SENS2_TYPE		8
+#define Q_SENS2_TEMP		9
 #define Q_PWM1				10
 #define Q_PWM2				11
 #define Q_OUT1				12
@@ -65,25 +65,25 @@
 #define U_PWMRUN			4
 #define U_ACC				5
 #define U_REVERSED			6
-#define U_STEPPER_MODE                  7
+#define U_STEPPER_MODE		7
 #define U_COMPSENS			8
 #define U_STEPSIZE			9
 #define U_PWMPRESC			10
 #define U_STEPPRESC			11
-#define U_BUZ_ENABLED                   12
+#define U_BUZ_ENABLED		12
 #define U_HUM_SENS			13
-#define U_DC_REVERSED                   14
+#define U_DC_REVERSED		14
 #define U_OUT1_DEF			15
 #define U_OUT2_DEF			16
 #define U_OUT3_DEF			17
 
-#define E_COMP_CYCLE                    1
-#define E_COMP_STEPS                    2
-#define E_COMP_SENSR                    3
+#define E_COMP_CYCLE		1
+#define E_COMP_STEPS		2
+#define E_COMP_SENSR		3
 #define E_COMP_AUTO			4
 #define E_COMP_TRGR			5
 
-#define N_AREF_COEFF                    1
+#define N_AREF_COEFF		1
 #define N_OVER_VOLT			2
 #define N_OVER_AMP			3
 #define N_OVER_TIME			4
