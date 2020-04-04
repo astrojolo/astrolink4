@@ -30,16 +30,10 @@ indiserver -v indi_astrolink4
 
 Now AstroLink can be used with any software that supports INDI drivers, like KStars with Ekos.
 
-
-<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-connection.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-connection.png" align="left" width="300" ></a>
-
-<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-options.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-options.png" align="left" width="300" ></a>
-
-<a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg" align="left" width="300" ></a>
-
-<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-environment.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-environment.png" align="left" width="300" ></a>
-<a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-power.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-power.jpg" align="left" width="300" ></a>
-
-<a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-settings.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-settings.jpg" align="left" width="300" ></a>
-
-<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-dcfocuser.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-dcfocuser.png" align="left" width="300" ></a>
+<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-connection.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-connection.png" width="400" ></a><a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-options.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-options.png" width="400" ></a>
+<br />
+<a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg" width="400" ></a><a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-environment.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-environment.png" width="400" ></a>
+<br />
+<a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-power.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-power.jpg" width="400" ></a><a href="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-settings.jpg"><img src="https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-settings.jpg" width="400" ></a>
+<br />
+<a href="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-dcfocuser.png"><img src="https://astrojolo.com/wp-content/uploads/2020/04/astrolink-indi-dcfocuser.png" width="400" ></a>
