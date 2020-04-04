@@ -30,4 +30,4 @@ indiserver -v indi_astrolink4
 
 Now AstroLink can be used with any software that supports INDI drivers, like KStars with Ekos.
 
-![INDI AstroLink](https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg)
+![INDI AstroLink](https://astrojolo.com/wp-content/uploads/2019/10/astrolink-indi-focuser.jpg | width=300)
