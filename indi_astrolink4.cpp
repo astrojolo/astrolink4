@@ -25,6 +25,8 @@
 #define ASTROLINK4_LEN      100
 #define ASTROLINK4_TIMEOUT  3
 
+#define POLLTIME 500
+
 //////////////////////////////////////////////////////////////////////
 /// Delegates
 //////////////////////////////////////////////////////////////////////
@@ -85,7 +87,7 @@ bool IndiAstrolink4::Handshake()
         }
         else
         {
-            SetTimer(POLLMS);
+            SetTimer(POLLTIME);
             return true;
         }
     }
@@ -97,7 +99,7 @@ void IndiAstrolink4::TimerHit()
     if(isConnected())
     {
         sensorRead();
-        SetTimer(POLLMS);
+        SetTimer(POLLTIME);
     }
 }
 
