@@ -17,7 +17,7 @@ git clone https://github.com/astrojolo/astrolink4.git
 cd astrolink4
 mkdir build
 cd build
-cmake ..
+cmake -DCMAKE_INSTALL_PREFIX=/usr ..
 make
 sudo make install
 ```
