@@ -256,29 +256,29 @@ bool IndiAstrolink4::updateProperties()
 
     if (isConnected())
     {
-    	defineNumber(&FocusPosMMNP);
+    	defineProperty(&FocusPosMMNP);
         FI::updateProperties();
         WI::updateProperties();
-        defineSwitch(&Power1SP);
-        defineSwitch(&Power2SP);
-        defineSwitch(&Power3SP);
-        defineSwitch(&AutoPWMSP);
-        defineNumber(&Sensor2NP);
-        defineNumber(&PWMNP);
-        defineNumber(&PowerDataNP);
-        defineNumber(&FocuserSettingsNP);
-        defineSwitch(&FocuserModeSP);
-        defineSwitch(&FocuserCompModeSP);
-        defineSwitch(&FocuserManualSP);
-        defineNumber(&CompensationValueNP);
-        defineSwitch(&CompensateNowSP);
-        defineSwitch(&PowerDefaultOnSP);
-        defineNumber(&OtherSettingsNP);
-        defineSwitch(&DCFocDirSP);
-        defineNumber(&DCFocTimeNP);
-        defineSwitch(&DCFocAbortSP);
-        defineText(&PowerControlsLabelsTP);
-        defineSwitch(&BuzzerSP);
+        defineProperty(&Power1SP);
+        defineProperty(&Power2SP);
+        defineProperty(&Power3SP);
+        defineProperty(&AutoPWMSP);
+        defineProperty(&Sensor2NP);
+        defineProperty(&PWMNP);
+        defineProperty(&PowerDataNP);
+        defineProperty(&FocuserSettingsNP);
+        defineProperty(&FocuserModeSP);
+        defineProperty(&FocuserCompModeSP);
+        defineProperty(&FocuserManualSP);
+        defineProperty(&CompensationValueNP);
+        defineProperty(&CompensateNowSP);
+        defineProperty(&PowerDefaultOnSP);
+        defineProperty(&OtherSettingsNP);
+        defineProperty(&DCFocDirSP);
+        defineProperty(&DCFocTimeNP);
+        defineProperty(&DCFocAbortSP);
+        defineProperty(&PowerControlsLabelsTP);
+        defineProperty(&BuzzerSP);
     }
     else
     {
@@ -831,12 +831,6 @@ bool IndiAstrolink4::sensorRead()
                 setParameterValue("WEATHER_TEMPERATURE", std::stod(result[Q_SENS1_TEMP]));
                 setParameterValue("WEATHER_HUMIDITY", std::stod(result[Q_SENS1_HUM]));
                 setParameterValue("WEATHER_DEWPOINT", std::stod(result[Q_SENS1_DEW]));
-                ParametersNP.s = IPS_OK;
-                IDSetNumber(&ParametersNP, nullptr);
-            }
-            else
-            {
-                ParametersNP.s = IPS_IDLE;
             }
                 
             if(std::stod(result[Q_SENS2_TYPE]) > 0)
