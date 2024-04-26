@@ -604,7 +604,8 @@ bool IndiAstrolink4::ISNewSwitch (const char *dev, const char *name, ISState *st
 
         if (strstr(name, "FOCUS"))
             return FI::processSwitch(dev, name, states, names, n);
-
+        if (strstr(name, "WEATHER_")) 
+            return WI::processSwitch(dev, name, states, names, n);
 	}
 
 	return INDI::DefaultDevice::ISNewSwitch (dev, name, states, names, n);
