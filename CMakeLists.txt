@@ -1,30 +1,47 @@
-cmake_minimum_required(VERSION 2.4.7)
-PROJECT(indi-astrolink4 CXX C)
+cmake_minimum_required(VERSION 3.10)
+project(indi-astrolink4 VERSION 0.1 LANGUAGES C CXX)
 
-set (VERSION_MAJOR 0)
-set (VERSION_MINOR 1)
+# Use modern CMake settings for the C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
-set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
-set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+# Allow additional modules to be found in cmake_modules/
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
+# Provide standard install directories
+include(GNUInstallDirs)
 
+# Find INDI (expects a FindINDI.cmake in cmake_modules/ or a package config)
 find_package(INDI REQUIRED)
 
-include_directories( ${CMAKE_CURRENT_BINARY_DIR})
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR})
-include_directories( ${INDI_INCLUDE_DIR})
+# Source files
+set(INDI_ASTROLINK4_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/indi_astrolink4.cpp
+)
 
-include(CMakeCommon)
+# Create target
+add_executable(indi_astrolink4 ${INDI_ASTROLINK4_SRCS})
 
-################ AstroLink4 ################
+# Include directories for the target (use target properties instead of global include_directories)
+target_include_directories(indi_astrolink4 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${INDI_INCLUDE_DIR}
+)
 
-set(indi_astrolink4_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/indi_astrolink4.cpp
-   )
+# Link against INDIdriver library
+target_link_libraries(indi_astrolink4 PRIVATE indidriver)
 
-add_executable(indi_astrolink4 ${indi_astrolink4_SRCS})
-target_link_libraries(indi_astrolink4 indidriver)
-install(TARGETS indi_astrolink4 RUNTIME DESTINATION bin )
-install(FILES indi_astrolink4.xml DESTINATION ${INDI_DATA_DIR})
+# Install rules
+install(TARGETS indi_astrolink4
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
 
+# Install device XML into INDI data directory if provided by the INDI package
+if(DEFINED INDI_DATA_DIR)
+    install(FILES indi_astrolink4.xml DESTINATION ${INDI_DATA_DIR})
+else()
+    # Fallback to share directory if INDI did not provide a data dir
+    install(FILES indi_astrolink4.xml DESTINATION ${CMAKE_INSTALL_DATADIR})
+endif()
